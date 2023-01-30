@@ -1,8 +1,3 @@
-# circuit arcs
-# tuples
-# add arc : arcs.append([job1_index, job2_index, binary])                             |
-# add link: Use OnlyEnforceIf for  binary <--->  job1.start_time <= job2.end_time     | -> three things connected
-
 from ortools.sat.python import cp_model
 
 # Initiate
@@ -21,6 +16,7 @@ tasks = [0, 1, 2, 3]
 task_to_product = {0: 'dummy', 1: 'A', 2: 'B', 3: 'A'}
 processing_time = {'dummy': 0, 'A': 1, 'B': 1}
 changeover_time = {'dummy': 0, 'A': 1, 'B': 1}
+starting_product = 'A'
 
 m = {
     (t1, t2)
@@ -29,24 +25,28 @@ m = {
     if t1 != t2
 }
 
+# A -> A, B --> B: 0
+# dummy A -> A: 0
+# dummy A -> B: 1
+# A -> B, B -> A: 1
+
 m_cost = {
     (t1, t2): 0
-    if task_to_product[t1] == task_to_product[t2] or task_to_product[t1] == 'dummy' or task_to_product[t2] == 'dummy'
+    if task_to_product[t1] == task_to_product[t2] or (
+            task_to_product[t1] == 'dummy' and task_to_product[t2] == starting_product
+    )
     else changeover_time[task_to_product[t2]]
     for (t1, t2) in m
 }
 
 
-# 2. Decision variables
-'''
-(1, 2): 0/1
-(1, 3)
-(2, 1)
-(2, 3)
-(3, 1)
-(3, 2)
-'''
 
+
+
+
+
+
+# 2. Decision variables
 max_time = 8
 
 variables_task_ends = {
@@ -71,7 +71,6 @@ total_changeover_time = sum(
 )
 
 model.Minimize(total_changeover_time)
-#model.Maximize(total_changeover_time)
 
 
 # 4. Constraints
@@ -86,14 +85,7 @@ for task in tasks:
 # AddCircuits
 
 arcs = list()
-'''
-arcs.append([0, 1, model.NewBoolVar("dummy0" + "_to_1")])
-arcs.append([0, 2, model.NewBoolVar("dummy0" + "_to_2")])
-arcs.append([0, 3, model.NewBoolVar("dummy0" + "_to_3")])
-arcs.append([1, 0, model.NewBoolVar("1_to_" + "dummy0")])
-arcs.append([2, 0, model.NewBoolVar("2_to_" + "dummy0")])
-arcs.append([3, 0, model.NewBoolVar("3_to_" + "dummy0")])
-'''
+
 for (from_task, to_task) in m:
     arcs.append(
         [
@@ -110,16 +102,8 @@ for (from_task, to_task) in m:
 
 model.AddCircuit(arcs)
 
-#model.Add(variables_task_starts[0] == 8)
 
 # Solve
-
-# https://github.com/d-krupke/cpsat-primer
-#model.AddDecisionStrategy(variables_task_starts, cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
-#model.AddDecisionStrategy([x[1] for x in variables_task_starts.items()], cp_model.CHOOSE_FIRST, cp_model.SELECT_MAX_VALUE)
-#model.AddDecisionStrategy([x[1] for x in variables_task_starts.items()], cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
-#model.AddDecisionStrategy([x[1] for x in variables_task_starts.items()], cp_model.CHOOSE_FIRST, cp_model.SELECT_MAX_VALUE)
-
 
 solver = cp_model.CpSolver()
 status = solver.Solve(model=model)

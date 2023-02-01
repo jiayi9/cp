@@ -206,6 +206,7 @@ for m in machines:
                 distance = m_cost[m, t1, t2]
                 # cannot require the time index of task 0 to represent the first and the last position
                 if t2 != 0:
+                    # to schedule tasks and c/o
                     model.Add(
                         variables_task_ends[t1] <= variables_co_starts[t1, t2]
                     ).OnlyEnforceIf(variables_machine_task_sequence[(m, t1, t2)])
@@ -218,6 +219,7 @@ for m in machines:
                         variables_co_ends[t1, t2] - variables_co_starts[t1, t2] == distance
                     ).OnlyEnforceIf(variables_machine_task_sequence[(m, t1, t2)])
 
+                    # ensure intervals are consistent so we can apply resource constraints later
                     model.Add(
                         variables_machine_co_presences[m, t1, t2] == 1
                     ).OnlyEnforceIf(variables_machine_task_sequence[(m, t1, t2)])

@@ -75,6 +75,20 @@ variables_machine_task_sequence = {
     for (m, t1, t2) in X
 }
 
+# intervals
+variables_machine_task_intervals = {
+    (m, task): model.NewOptionalIntervalVar(
+        variables_machine_task_starts[m, task],
+        processing_time[task_to_product[task]],
+        variables_machine_task_ends[m, task],
+        variables_machine_task_presences[m, task],
+        name=f"interval_{m}_{task}"
+    )
+    for task in tasks_0
+    for m in machines
+}
+
+
 # 3. Objectives
 
 make_span = model.NewIntVar(0, max_time, "make_span")
@@ -89,10 +103,10 @@ model.Minimize(make_span)
 # 4. Constraints
 
 # Duration - This can be replaced by interval variable ?
-for task in tasks_0:
-    model.Add(
-        variables_task_ends[task] - variables_task_starts[task] == processing_time[task_to_product[task]]
-    )
+# for task in tasks_0:
+#     model.Add(
+#         variables_task_ends[task] - variables_task_starts[task] == processing_time[task_to_product[task]]
+#     )
 
 # One task to one machine. Link across level.
 for task in tasks:
@@ -200,7 +214,3 @@ if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
 
 elif status == cp_model.INFEASIBLE:
     print("Infeasible")
-elif status == cp_model.MODEL_INVALID:
-    print("Model invalid")
-else:
-    print(status)

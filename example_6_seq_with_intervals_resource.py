@@ -19,7 +19,7 @@ task_to_product = {0: 'dummy', 1: 'A', 2: 'B', 3: 'A', 4: 'B'}
 processing_time = {'dummy': 0, 'A': 1, 'B': 1}
 changeover_time = {'dummy': 0, 'A': 1, 'B': 1}
 machines = {0, 1}
-machines_starting_products = {0: 'A', 1: 'A'}
+machines_starting_products = {0: 'A', 1: 'B'}
 
 X = {
     (m, t1, t2)
@@ -38,6 +38,8 @@ m_cost = {
     else changeover_time[task_to_product[t2]]
     for (m, t1, t2) in X
 }
+
+
 
 
 # 2. Decision variables
@@ -75,6 +77,20 @@ variables_machine_task_sequence = {
     for (m, t1, t2) in X
 }
 
+# intervals
+variables_machine_task_intervals = {
+    (m, task): model.NewOptionalIntervalVar(
+        variables_machine_task_starts[m, task],
+        processing_time[task_to_product[task]],
+        variables_machine_task_ends[m, task],
+        variables_machine_task_presences[m, task],
+        name=f"interval_{m}_{task}"
+    )
+    for task in tasks_0
+    for m in machines
+}
+
+
 # 3. Objectives
 
 make_span = model.NewIntVar(0, max_time, "make_span")
@@ -89,10 +105,10 @@ model.Minimize(make_span)
 # 4. Constraints
 
 # Duration - This can be replaced by interval variable ?
-for task in tasks_0:
-    model.Add(
-        variables_task_ends[task] - variables_task_starts[task] == processing_time[task_to_product[task]]
-    )
+# for task in tasks_0:
+#     model.Add(
+#         variables_task_ends[task] - variables_task_starts[task] == processing_time[task_to_product[task]]
+#     )
 
 # One task to one machine. Link across level.
 for task in tasks:
@@ -166,6 +182,13 @@ for m in machines:
         ])
 
     model.AddCircuit(arcs)
+
+
+# Add resource constraint that there is only one people so no parallel task expected
+
+intervals = list(variables_machine_task_intervals.values())
+
+model.AddCumulative(intervals, [1]*len(intervals), 1)
 
 
 # Solve

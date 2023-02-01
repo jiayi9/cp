@@ -6,20 +6,21 @@ model = cp_model.CpModel()
 '''
 task   product
 1       A
-2       B
+2       A
 3       A
-4       B
+4       A
 '''
 
 # 1. Data
 
 tasks = {1, 2, 3, 4}
 tasks_0 = tasks.union({0})
-task_to_product = {0: 'dummy', 1: 'A', 2: 'B', 3: 'A', 4: 'B'}
-processing_time = {'dummy': 0, 'A': 1, 'B': 1}
-changeover_time = {'dummy': 0, 'A': 1, 'B': 1}
-machines = {0, 1}
-machines_starting_products = {0: 'A', 1: 'A'}
+task_to_product = {0: 'dummy', 1: 'A', 2: 'A', 3: 'A', 4: 'A'}
+processing_time = {'dummy': 0, 'A': 1}
+changeover_time = {'dummy': 0, 'A': 1}
+machines = {0}
+machines_starting_products = {0: 'A'}
+breaks = {(2, 3)}
 
 X = {
     (m, t1, t2)
@@ -69,11 +70,24 @@ variables_machine_task_presences = {
     for m in machines
 }
 
-# This includes task 0
 variables_machine_task_sequence = {
     (m, t1, t2): model.NewBoolVar(f"Machine {m} task {t1} --> task {t2}")
     for (m, t1, t2) in X
 }
+
+# intervals
+variables_machine_task_intervals = {
+    (m, task): model.NewOptionalIntervalVar(
+        variables_machine_task_starts[m, task],
+        processing_time[task_to_product[task]],
+        variables_machine_task_ends[m, task],
+        variables_machine_task_presences[m, task],
+        name=f"interval_{m}_{task}"
+    )
+    for task in tasks_0
+    for m in machines
+}
+
 
 # 3. Objectives
 
@@ -83,31 +97,22 @@ model.AddMaxEquality(
     make_span,
     [variables_task_ends[task] for task in tasks]
 )
+
 model.Minimize(make_span)
 
 
 # 4. Constraints
 
-# Duration - This can be replaced by interval variable ?
-for task in tasks_0:
-    model.Add(
-        variables_task_ends[task] - variables_task_starts[task] == processing_time[task_to_product[task]]
-    )
-
-# One task to one machine. Link across level.
+# One task to one machine.
 for task in tasks:
-
     # For this task
-
     # get all allowed machines
     task_candidate_machines = machines
-
     # find the subset in presence matrix related to this task
     tmp = [
         variables_machine_task_presences[m, task]
         for m in task_candidate_machines
     ]
-
     # this task is only present in one machine
     model.AddExactlyOne(tmp)
 
@@ -125,24 +130,17 @@ for task in tasks_0:
         ).OnlyEnforceIf(variables_machine_task_presences[m, task])
 
 
-# for dummies
+# for dummies: Force task 0 (dummy) starts at 0 and is present on all machines
 model.Add(variables_task_starts[0] == 0)
-# model.Add(variables_task_ends[0] == 0)
-# variables_machine_task_starts
-# variables_machine_task_ends
 for m in machines:
     model.Add(variables_machine_task_presences[m, 0] == 1)
 
 
 # Sequence
 for m in machines:
-
     arcs = list()
-
     for from_task in tasks_0:
-
         for to_task in tasks_0:
-
             # arcs
             if from_task != to_task:
                 arcs.append([
@@ -150,25 +148,56 @@ for m in machines:
                         to_task,
                         variables_machine_task_sequence[(m, from_task, to_task)]
                 ])
-
                 distance = m_cost[m, from_task, to_task]
-
                 # cannot require the time index of task 0 to represent the first and the last position
                 if to_task != 0:
-
                     model.Add(
                         variables_task_ends[from_task] + distance <= variables_task_starts[to_task]
                     ).OnlyEnforceIf(variables_machine_task_sequence[(m, from_task, to_task)])
-
     for task in tasks:
         arcs.append([
             task, task, variables_machine_task_presences[(m, task)].Not()
         ])
-
     model.AddCircuit(arcs)
 
 
+
+# Add break time
+variables_breaks = {
+    (start, end): model.NewFixedSizeIntervalVar(start=start, size=1, name='a_break') for (start, end) in breaks
+}
+
+# Add resource control with break
+intervals = list(variables_machine_task_intervals.values()) + list(variables_breaks.values())
+model.AddCumulative(intervals, [1]*len(intervals), 1)
+
+
+
 # Solve
+
+
+# https://github.com/d-krupke/cpsat-primer
+
+# default
+# 0 1 4 2 3 0
+
+#model.AddDecisionStrategy(variables_task_starts.values(), cp_model.CHOOSE_FIRST, cp_model.SELECT_MAX_VALUE)
+# 0 4 3 2 1 0
+
+#model.AddDecisionStrategy(variables_task_starts.values(), cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
+# 0 1 4 2 3 0
+
+# strange
+#model.AddDecisionStrategy(variables_machine_task_sequence.values(), cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
+# 0 1 4 2 3 0
+
+# Need the following both to have the right sequence
+model.AddDecisionStrategy(variables_task_starts.values(), cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
+model.AddDecisionStrategy(variables_machine_task_sequence.values(), cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
+
+
+# 0 1 2 3 4 0
+
 
 solver = cp_model.CpSolver()
 status = solver.Solve(model=model)

@@ -15,7 +15,6 @@ We need task level start and end for convenience of working with more complicate
 
 
 from ortools.sat.python import cp_model
-from collections import OrderedDict
 
 # Initiate
 M = 99999

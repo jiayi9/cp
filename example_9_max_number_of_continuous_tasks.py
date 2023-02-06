@@ -8,23 +8,70 @@ task   product
 1       A
 2       A
 3       A
+4       B
 '''
 
 # 1. Data
 
-tasks = {1, 2, 3}
-task_to_product = {1: 'A', 2: 'A', 3: 'B'}
+tasks = {1, 2, 3, 4}
+products = {'A', 'B'}
+task_to_product = {1: 'A', 2: 'A', 3: 'A', 4: 'B'}
 processing_time = {'A': 1, 'B': 1}
 changeover_time = 2
 max_conti_task_num = 2
 max_time = 20
-
 m_cost = {
     (t1, t2): 0
     if task_to_product[t1] == task_to_product[t2] else changeover_time
     for t1 in tasks for t2 in tasks
     if t1 != t2
 }
+
+
+# Campaign related data pre=processing
+
+max_product_campaigns = {
+    product: len([task for task in tasks if task_to_product[task]==product]) for product in products
+}
+
+product_campaigns = {
+    (product, f"{product}_{campaign}")
+    for product in max_product_campaigns
+    for campaign in list(range(0, max_product_campaigns[product]))
+    #if max_product_campaigns[product] > 0
+}
+
+campaign_to_product = {
+    campaign: product for product, campaign in product_campaigns
+}
+
+campaigns = {campaign for product, campaign in product_campaigns}
+
+product_to_campaigns = {
+    product: [c for c in campaigns if campaign_to_product[c] == product] for product in products
+}
+
+task_to_campaigns = {
+    task: [
+        campaign for campaign in campaigns if campaign_to_product[campaign] == task_to_product[task]
+    ]
+    for task in tasks
+}
+
+campaign_size = {campaign: max_conti_task_num for campaign in campaigns}
+
+campaign_duration = {campaign: max_conti_task_num for campaign in campaigns}
+
+campaign_to_tasks = {
+    campaign:
+        [
+            task for task in tasks if campaign in task_to_campaigns[task]
+        ]
+    for campaign in campaigns
+}
+
+
+
 
 # Need changeover if we switch from a product to a different product
 # We can continue to do tasks of the same product type but there is
@@ -46,7 +93,7 @@ variables_task_starts = {
 }
 
 variables_task_sequence = {
-    (t1, t2): model.NewBoolVar(f"Machine {m} task {t1} --> task {t2}")
+    (t1, t2): model.NewBoolVar(f"task {t1} --> task {t2}")
     for t1 in tasks
     for t2 in tasks
     if t1 != t2
@@ -114,6 +161,96 @@ for t1 in tasks:
                 ).OnlyEnforceIf(variables_task_sequence[(t1, t2)])
 
 model.AddCircuit(arcs)
+
+
+# Campaigning related
+
+var_campaign_starts = {
+    c: model.NewIntVar(0, max_time, f"start_{c}") for c in campaigns
+}
+
+var_campaign_durations = {
+    c: model.NewIntVar(0, max_time, f"c_duration_{c}") for c in campaigns
+}
+
+var_campaign_ends = {
+    c: model.NewIntVar(0, max_time, f"c_end_{c}") for c in campaigns
+}
+
+var_campaign_presences = {
+    c: model.NewBoolVar(f"c_presence_{c}") for c in campaigns
+}
+
+var_campaign_intervals = {
+    c: model.NewOptionalIntervalVar(
+        var_campaign_starts[c],  # campaign start
+        var_campaign_durations[c],  # campaign duration
+        var_campaign_ends[c],  # campaign end
+        var_campaign_presences[c],  # campaign presence
+        f"c_interval_{c}",
+    )
+    for c in campaigns
+}
+
+var_task_campaign_presences = {
+    (t, c): model.NewBoolVar(f"tc_presence_{t}_{c}") for t in tasks for c in task_to_campaigns[t]
+}
+
+# add_campaign_definition_constraints
+# 1. Campaign definition: Start & duration based on tasks that belongs to the campaign
+
+for c in campaigns:
+    #  1. Duration definition
+    model.Add(
+        var_campaign_durations[c]
+        == sum(
+            # processing_times[t, c2m[c]] * tc_presences[t, c]
+            processing_time[task_to_product[t]] * var_task_campaign_presences[t, c]
+            for t in campaign_to_tasks[c]
+        )
+    )
+    # 2. Start-end definition
+    # TODO: MinEquality ?
+    for t in campaign_to_tasks[c]:
+        var_campaign_starts
+        var_campaign_ends
+
+        model.Add(var_campaign_starts[c] <= variables_task_starts[t]).OnlyEnforceIf(
+            var_task_campaign_presences[t, c]
+        )
+        model.Add(var_campaign_ends[c] >= variables_task_ends[t]).OnlyEnforceIf(
+            var_task_campaign_presences[t, c]
+        )
+    # 3. Link c & tc presence: If 1 task is scheduled on a campaign -> presence[t, c] = 1 ==> presence[c] == 1
+    # as long as there is one task in a campaign, this campaign must be present
+    model.AddMaxEquality(
+        var_campaign_presences[c], [var_task_campaign_presences[t, c] for t in campaign_to_tasks[c]]
+    )
+
+# 2. Definition of the bool var: if a task belongs to a campaign
+for task in tasks:
+    # One task belongs to at most 1 campaign
+    task_to_campaigns[task]
+    model.Add(
+        sum(var_task_campaign_presences[task, campaign]
+            for campaign in campaigns
+            if campaign in task_to_campaigns[task]
+            ) == 1
+    )
+# 3. No campaign overlap
+model.AddNoOverlap([x for x in var_campaign_intervals.values()])
+
+
+# Add campaign circuit
+
+
+
+
+
+
+
+
+
 
 
 # Solve

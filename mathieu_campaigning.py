@@ -509,6 +509,12 @@ def create_campaign_dummy_data(
     machines_to_tasks = model_input.mappings.machines_to_tasks
     task_to_job = model_input.mappings.task_to_job
 
+    # machines = {'m1', 'm2'}
+    # tasks = {'t1', 't2', 't3'}
+    # machines_to_tasks = {'m1': ['t1', 't2'], 'm2':['t2', 't3']}
+
+    # family -> job -> task       X        machine
+
     # 2. Create dummy data
     machines_to_jobs = {
         machine: set([task_to_job[task] for task in machines_to_tasks[machine]])

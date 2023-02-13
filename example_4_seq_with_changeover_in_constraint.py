@@ -21,6 +21,11 @@ changeover_time = {'dummy': 0, 'A': 1, 'B': 1}
 machines = {0, 1}
 machines_starting_products = {0: 'A', 1: 'A'}
 
+'''
+M1  A -> A -> A   1+1
+M2  A -> B -> B   1+1+1  --> 3
+'''
+
 X = {
     (m, t1, t2)
     for t1 in tasks_0

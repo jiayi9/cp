@@ -5,7 +5,7 @@ model = cp_model.CpModel()
 
 '''
 task    product     type
-1       A           3
+1       A           TYPE_3
 '''
 
 # 1. Data

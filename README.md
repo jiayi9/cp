@@ -1,2 +1,2 @@
-# cp
-Learn CP with google ORTools
+# CP for Job Shop Problems 
+Examples of basic elements of general scheduling with OR-Tools CP-SAT

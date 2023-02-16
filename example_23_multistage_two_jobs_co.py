@@ -3,12 +3,12 @@ from ortools.sat.python import cp_model
 # Initiate
 model = cp_model.CpModel()
 
-jobs = {1, 2}
+jobs = {1, 2, 3, 4, 5, 6}
 stages = {1, 2, 3}
 tasks = {(job, stage) for job in jobs for stage in stages}
 
 processing_time = 3
-max_time = 20
+max_time = 100
 
 # 1. Jobs
 var_job_starts = {

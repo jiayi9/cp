@@ -138,14 +138,12 @@ def model(num_tasks):
 
     # Solve
     solver = cp_model.CpSolver()
-    status = solver.Solve(model=model)
-    return status
 
-
-def time_model(num_tasks):
     start = time()
-    model(num_tasks)
-    return time() - start
+    status = solver.Solve(model=model)
+    total_time = time() - start
+
+    return total_time
 
 
 if __name__ == '__main__':
@@ -154,7 +152,7 @@ if __name__ == '__main__':
     seconds = []
     for i in num_tasks:
         print(i)
-        processing_time = time_model(i)
+        processing_time = model(i)
         seconds.append(processing_time)
 
     plt.plot(num_tasks, seconds)

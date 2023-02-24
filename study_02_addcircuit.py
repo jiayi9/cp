@@ -89,7 +89,6 @@ def run_model_MIPStyle(num_tasks):
     max_time = num_tasks
     tasks = {i+1 for i in range(num_tasks)}
     processing_time = 1
-    # 2. Decision variables
     var_task_starts = {
         task: model.NewIntVar(0, max_time, f"task_{task}_start") for task in tasks
     }

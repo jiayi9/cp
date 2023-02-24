@@ -43,7 +43,7 @@ def add_mip_style_constraints(model, tasks, var_task_starts, var_task_ends, lite
             model.Add(var_task_ends[t1] <= var_task_starts[t2]).OnlyEnforceIf(literals[t1, t2])
 
 
-def run_model_1(num_tasks):
+def run_model_AddCircuit(num_tasks):
     """ Using AddCircuit for sequence optimization """
     model = cp_model.CpModel()
     max_time = num_tasks
@@ -80,7 +80,7 @@ def run_model_1(num_tasks):
         return -999
 
 
-def run_model_2(num_tasks):
+def run_model_MIPStyle(num_tasks):
     """ Using MIP style constraints for sequence optimization """
 
     model = cp_model.CpModel()
@@ -121,7 +121,7 @@ def run_model_2(num_tasks):
 
 if __name__ == '__main__':
 
-    N = 80
+    N = 30
 
     sizes_1 = list(range(2, N))
     sizes_2 = list(range(2, N))
@@ -131,11 +131,11 @@ if __name__ == '__main__':
 
     print("\nAddCircuit\n")
     for size in tqdm(sizes_1):
-        model_1_times.append(run_model_1(size))
+        model_1_times.append(run_model_AddCircuit(size))
 
     print("\nMIP-style\n")
     for size in tqdm(sizes_2):
-        model_2_times.append(run_model_2(size))
+        model_2_times.append(run_model_MIPStyle(size))
 
     ax = plt.figure().gca()
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))

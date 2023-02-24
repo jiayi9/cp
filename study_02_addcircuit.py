@@ -121,7 +121,7 @@ def run_model_MIPStyle(num_tasks):
 
 if __name__ == '__main__':
 
-    N = 30
+    N = 80
 
     sizes_1 = list(range(2, N))
     sizes_2 = list(range(2, N))

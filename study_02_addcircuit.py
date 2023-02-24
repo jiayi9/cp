@@ -1,6 +1,5 @@
-# This script benchmark
-# MIP style Constraints V.S. Using AddCircuit
-# The only difference between run_model_1 and run_model_2 is the above
+# This script benchmark MIP style Constraints V.S. Using AddCircuit
+
 from ortools.sat.python import cp_model
 from time import time
 from matplotlib import pyplot as plt
@@ -28,14 +27,17 @@ def add_mip_style_constraints(model, tasks, var_task_starts, var_task_ends, lite
 
     tasks_aug = tasks.union({0})
 
+    # Only one task go to this task
     for t_j in tasks_aug:
         tmp = [literals[task, t_j] for task in tasks_aug if task != t_j]
         model.Add(sum(tmp) == 1)
 
+    # This task only goes to one task
     for t_i in tasks_aug:
         tmp = [literals[t_i, task] for task in tasks_aug if t_i != task]
         model.Add(sum(tmp) == 1)
 
+    #
     for t1 in tasks:
         for t2 in tasks:
             if t1 == t2:

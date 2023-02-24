@@ -1,5 +1,6 @@
 # This script benchmark
 # Constraint: End - Start = Duration V.S. Using NewIntervalVar
+# The only difference between run_model_1 and run_model_2 is the above
 
 from ortools.sat.python import cp_model
 from time import time
@@ -88,14 +89,14 @@ if __name__ == '__main__':
     model_2_times = []
 
     print("Constraint: End - Start = Duration")
-    for i in sizes:
-        print(i)
-        model_1_times.append(run_model_1(i))
+    for size in sizes:
+        print(size)
+        model_1_times.append(run_model_1(size))
 
     print("With NewIntervalVar")
-    for i in sizes + [9]:
-        print(i)
-        model_2_times.append(run_model_2(i))
+    for size in sizes + [9]:
+        print(size)
+        model_2_times.append(run_model_2(size))
 
     ax = plt.figure().gca()
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))

@@ -1,3 +1,5 @@
+# USE INTERVAL !!!
+
 from ortools.sat.python import cp_model
 from time import time
 from matplotlib import pyplot as plt
@@ -65,11 +67,23 @@ def model(num_tasks):
         for t in tasks
         for m in machines
     }
+    variables_intervals = {
+        (m, t): model.NewOptionalIntervalVar(
+            start=variables_machine_task_starts[m, t],
+            size=processing_time[task_to_product[t]],
+            end=variables_machine_task_ends[m, t],
+            is_present=variables_machine_task_presences[m, t],
+            name=f"interval_{t}_{m}",
+        )
+        for t in tasks
+        for m in machines
+    }
 
     variables_machine_task_sequence = {
         (m, t1, t2): model.NewBoolVar(f"Machine {m} task {t1} --> task {t2}")
         for (m, t1, t2) in X
     }
+
 
     # 3. Objectives
 
@@ -85,7 +99,7 @@ def model(num_tasks):
         make_span,
         [variables_task_ends[task] for task in tasks]
     )
-    model.Minimize(make_span)# + total_changeover_time)
+    model.Minimize(make_span + total_changeover_time)
 
     # 4. Constraints
     for task in tasks:
@@ -109,32 +123,20 @@ def model(num_tasks):
                 variables_task_ends[task] == variables_machine_task_ends[m, task]
             ).OnlyEnforceIf(variables_machine_task_presences[m, task])
 
-    for task in tasks:
-        model.Add(
-            variables_task_ends[task] - variables_task_starts[task] == processing_time[task_to_product[task]]
-        )
-
-    # AddCircuits
     for machine in machines:
-        arcs = list()
-        tmp = [x for x in X if x[0] == machine]
-        for (m, from_task, to_task) in tmp:
-            arcs.append(
-                [
-                    from_task,
-                    to_task,
-                    variables_machine_task_sequence[(m, from_task, to_task)]
-                ]
-            )
-            if from_task != 0 and to_task != 0:
-                model.Add(
-                    variables_task_ends[from_task] <= variables_task_starts[to_task]
-                ).OnlyEnforceIf(variables_machine_task_sequence[(m, from_task, to_task)])
-        for task in tasks:
-            arcs.append([
-                task, task, variables_machine_task_presences[(machine, task)].Not()
-            ])
-        model.AddCircuit(arcs)
+        tmp = {(m, t) for (m, t) in variables_intervals if m == machine}
+        intervals = [variables_intervals[x] for x in tmp]
+        model.AddNoOverlap(intervals)
+
+    # Create circuit constraints
+    add_circuit_constraints(
+        model,
+        machines,
+        tasks,
+        variables_task_starts,
+        variables_task_ends,
+        variables_machine_task_presences,
+    )
 
     # Solve
     solver = cp_model.CpSolver()
@@ -146,9 +148,64 @@ def model(num_tasks):
     return total_time
 
 
+def add_circuit_constraints(
+    model,
+    machines,
+    tasks,
+    variables_task_starts,
+    variables_task_ends,
+    variables_machine_task_presences,
+):
+    for machine in machines:
+        arcs = (
+            []
+        )  # List of all feasible arcs within a machine. Arcs are boolean to specify circuit from node to node
+        machine_tasks = tasks
+
+        for node_1, task_1 in enumerate(machine_tasks):
+            mt_1 = str(task_1) + "_" + str(machine)
+            # Initial arc from the dummy node (0) to a task.
+            arcs.append(
+                [0, node_1 + 1, model.NewBoolVar("first" + "_" + mt_1)]
+            )  # if mt_1 follows dummy node 0
+            # Final arc from an arc to the dummy node (0).
+            arcs.append(
+                [node_1 + 1, 0, model.NewBoolVar("last" + "_" + mt_1)]
+            )  # if dummy node 0 follows mt_1
+
+            # For optional task on machine (i.e other machine choice)
+            # Self-looping arc on the node that corresponds to this arc.
+            arcs.append(
+                [
+                    node_1 + 1,
+                    node_1 + 1,
+                    variables_machine_task_presences[(machine, task_1)].Not(),
+                ]
+            )
+
+            for node_2, task_2 in enumerate(machine_tasks):
+                if node_1 == node_2:
+                    continue
+                mt_2 = str(task_2) + "_" + str(machine)
+                # Add sequential boolean constraint: mt_2 follows mt_1
+                mt2_after_mt1 = model.NewBoolVar(f"{mt_2} follows {mt_1}")
+                arcs.append([node_1 + 1, node_2 + 1, mt2_after_mt1])
+
+                # We add the reified precedence to link the literal with the
+                # times of the two tasks.
+                min_distance = 0
+                (
+                    model.Add(
+                        variables_task_starts[task_2] >= variables_task_ends[task_1] + min_distance
+                    ).OnlyEnforceIf(mt2_after_mt1)
+                )
+        model.AddCircuit(arcs)
+
+
+
 if __name__ == '__main__':
 
-    num_tasks = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    num_tasks = [x+2 for x in range(80)]
 
     seconds = []
 

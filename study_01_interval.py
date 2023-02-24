@@ -84,24 +84,25 @@ def run_model_2(num_tasks):
 
 if __name__ == '__main__':
 
-    sizes = [2, 3, 4, 5, 6, 7, 8]
+    sizes_1 = [2, 3, 4, 5, 6, 7, 8]
+    sizes_2 = sizes_1 + [9]
     model_1_times = []
     model_2_times = []
 
     print("Constraint: End - Start = Duration")
-    for size in sizes:
+    for size in sizes_1:
         print(size)
         model_1_times.append(run_model_1(size))
 
     print("With NewIntervalVar")
-    for size in sizes + [9]:
+    for size in sizes_2:
         print(size)
         model_2_times.append(run_model_2(size))
 
     ax = plt.figure().gca()
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.plot(sizes, model_1_times, marker='o', label='Constraint: End - Start = Duration')
-    plt.plot(sizes, model_2_times, '-.', marker='o', label='With NewIntervalVar')
+    plt.plot(sizes_1, model_1_times, marker='o', label='Constraint: End - Start = Duration')
+    plt.plot(sizes_2, model_2_times, '-.', marker='o', label='With NewIntervalVar')
     plt.legend()
     plt.title('Performance benchmarking')
     plt.xlabel('The number of tasks')

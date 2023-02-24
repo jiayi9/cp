@@ -68,6 +68,7 @@ def run_model_2(num_tasks):
         )
         for task in tasks
     }
+    model.AddNoOverlap(var_intervals.values())
     # Sequence optimizing
     literals = {(t1, t2): model.NewBoolVar(f"{t1} -arc-> {t2}") for t1 in tasks for t2 in tasks if t1 != t2}
     add_circuit_constraints(model, tasks, var_task_starts, var_task_ends, literals)
@@ -84,8 +85,8 @@ def run_model_2(num_tasks):
 
 if __name__ == '__main__':
 
-    sizes_1 = [2, 3, 4, 5, 6, 7, 8]
-    sizes_2 = sizes_1 + [9]
+    sizes_1 = list(range(2, 9))
+    sizes_2 = list(range(2, 21))
     model_1_times = []
     model_2_times = []
 

@@ -115,7 +115,7 @@ def print_unit_test_result(x, y1, y2, title=''):
 
 if __name__ == '__main__':
 
-    N = 7
+    N = 8
     sizes = range(2, N+1)
     model_times_campaign_2 = []
     model_times_campaign_3 = []

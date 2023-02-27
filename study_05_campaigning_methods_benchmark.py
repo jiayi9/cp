@@ -332,7 +332,7 @@ def run_model_orig(num_tasks, campaign_size, print_result=True):
 
 if __name__ == '__main__':
 
-    sizes_new = [2, 3, 4, 5, 6, 7, 8]
+    sizes_new = [2, 3, 4, 5, 6, 7]
     sizes_old = [2, 3, 4, 5, 6]
 
     model_times_old_campaign_2 = []

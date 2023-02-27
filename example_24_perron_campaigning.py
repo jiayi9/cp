@@ -80,7 +80,6 @@ def run_model(num_tasks, campaign_size, print_result = True):
     start = time()
     status = solver.Solve(model=model)
     total_time = time() - start
-    print(status)
 
     if print_result:
         if status == cp_model.OPTIMAL:

@@ -101,10 +101,11 @@ def run_model(num_tasks, campaign_size, print_result = True):
     return total_time
 
 
-def print_unit_test_result(x, y, title=''):
+def print_unit_test_result(x, y1, y2, title=''):
     ax = plt.figure().gca()
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.plot(x, y, marker='o')
+    plt.plot(x, y1, marker='o', label = 'Campaign size: 2')
+    plt.plot(x, y2, marker='o', label = 'Campaign size: 3')
     plt.legend()
     plt.title(title)
     plt.xlabel('The number of tasks')
@@ -114,12 +115,14 @@ def print_unit_test_result(x, y, title=''):
 
 if __name__ == '__main__':
 
-    N = 10
-    campaign_size = 2
+    N = 8
     sizes = range(2, N+1)
-    model_times = []
+    model_times_campaign_2 = []
+    model_times_campaign_3 = []
 
     for num_task in sizes:
-        model_times.append(run_model(num_task, campaign_size, print_result=False))
+        model_times_campaign_2.append(run_model(num_task, campaign_size=2, print_result=False))
+        model_times_campaign_3.append(run_model(num_task, campaign_size=3, print_result=False))
 
-    print_unit_test_result(sizes, model_times, 'Scalability of Campaigning with Cumulative Indicator')
+    print_unit_test_result(sizes, model_times_campaign_2, model_times_campaign_3,
+                           'Scalability of Campaigning with Cumulative Indicator')

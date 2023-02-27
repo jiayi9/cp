@@ -1,9 +1,10 @@
+# Inspired by https://stackoverflow.com/questions/75554536
+
 from ortools.sat.python import cp_model
 from time import time
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
-from tqdm import tqdm
-# Initiate
+
 model = cp_model.CpModel()
 
 

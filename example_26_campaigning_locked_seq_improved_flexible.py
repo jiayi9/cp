@@ -29,7 +29,7 @@ def run_model(num_tasks, campaign_size, print_result=True):
     var_task_ends = {task: model.NewIntVar(0, max_time, f"task_{task}_end") for task in tasks}
     var_task_cumul = {task: model.NewIntVar(0, campaign_size-1, f"task_{task}_cumul") for task in tasks}
     model.Add(var_task_cumul[0]==0)
-    var_start_a_new_campaign = {task: model.NewBoolVar(f"task_{task}_reach_max") for task in tasks}
+    var_reach_campaign_end = {task: model.NewBoolVar(f"task_{task}_reach_max") for task in tasks}
 
     # Lock the sequence of the tasks (assume the deadlines are in this sequence !)
     # A relative later task shall not start earlier than a relative earlier task
@@ -70,35 +70,21 @@ def run_model(num_tasks, campaign_size, print_result=True):
                 continue
             arcs.append([t1, t2, literals[t1, t2]])
 
-            # # if from task has not reached MAX, continue the campaign
-            # model.Add(var_task_ends[t1] <= var_task_starts[t2]).OnlyEnforceIf(
-            #     literals[t1, t2]
-            # ).OnlyEnforceIf(var_task_reach_max[t1].Not())
-            # model.Add(var_task_cumul[t2] == var_task_cumul[t1] + 1).OnlyEnforceIf(
-            #     literals[t1, t2]
-            # ).OnlyEnforceIf(var_task_reach_max[t1].Not())
-            #
-            # # if from task has reached MAX, apply changeover and reset its cumulative indicator
-            # model.Add(var_task_cumul[t2] == 0).OnlyEnforceIf(
-            #     literals[t1, t2]
-            # ).OnlyEnforceIf(var_task_reach_max[t1])
-            # model.Add(var_task_ends[t1] + changeover_time <= var_task_starts[t2]).OnlyEnforceIf(
-            #     literals[t1, t2]
-            # ).OnlyEnforceIf(var_task_reach_max[t1])
-
             model.Add(
-                var_task_ends[t1] + var_start_a_new_campaign[t1]*changeover_time <= var_task_starts[t2]
+                var_task_ends[t1] + var_reach_campaign_end[t1]*changeover_time <= var_task_starts[t2]
             ).OnlyEnforceIf(
                 literals[t1, t2]
             )
 
+            # This is for fixed campaigning size. DO full-campaign or NOT DO.
             # model.Add(
             #     var_task_cumul[t2] == var_task_cumul[t1] + 1 - var_task_reach_max[t1]*campaign_size
             # ).OnlyEnforceIf(
             #     literals[t1, t2]
             # )
 
-            # The following makes the model invalid
+            # This is what we want for flexible campaigning but the following makes the model invalid
+            # The creator of or-tools has confirmed AddMaxEquality is not compatible with OnlyEnforceIf
             # model.AddMaxEquality(
             #     var_task_cumul[t2],
             #     [
@@ -109,8 +95,12 @@ def run_model(num_tasks, campaign_size, print_result=True):
             #     literals[t1, t2]
             # )
 
-            # ! HERE IS THE CHANGE RECOMMEND BY MATHIEU. BUT IN TWO STEPS !
-            model.AddMaxEquality(max_values[t1, t2], [0, var_task_cumul[t1] + 1 - var_start_a_new_campaign[t1]*campaign_size])
+            # ! HERE IS THE CHANGE RECOMMENDED FOR FLEXIBLE CAMPAIGNING. BUT IN TWO STEPS !
+            # NOTE var_reach_campaign_end ARE NOW OPEN BOOL DECISION VARIABLES.
+            model.AddMaxEquality(
+                max_values[t1, t2],
+                [0, var_task_cumul[t1] + 1 - var_reach_campaign_end[t1]*campaign_size]
+            )
             model.Add(var_task_cumul[t2] == max_values[t1, t2]).OnlyEnforceIf(literals[t1, t2])
 
     model.AddCircuit(arcs)
@@ -127,7 +117,7 @@ def run_model(num_tasks, campaign_size, print_result=True):
                       solver.Value(var_task_starts[task]),
                       solver.Value(var_task_ends[task]),
                       solver.Value(var_task_cumul[task]),
-                      solver.Value(var_start_a_new_campaign[task])
+                      solver.Value(var_reach_campaign_end[task])
                       )
             print('-------------------------------------------------')
             print('Make-span:', solver.Value(make_span))

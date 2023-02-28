@@ -70,6 +70,7 @@ def run_model(num_tasks, campaign_size, print_result=True):
                 continue
             arcs.append([t1, t2, literals[t1, t2]])
 
+            # [ task1 ] -> [ C/O ] -> [ task 2]
             model.Add(
                 var_task_ends[t1] + var_reach_campaign_end[t1]*changeover_time <= var_task_starts[t2]
             ).OnlyEnforceIf(
@@ -89,6 +90,12 @@ def run_model(num_tasks, campaign_size, print_result=True):
 
             # ! HERE IS THE CHANGE RECOMMENDED FOR FLEXIBLE CAMPAIGNING. BUT IN TWO STEPS !
             # NOTE var_reach_campaign_end ARE NOW OPEN BOOL DECISION VARIABLES.
+            #
+            # If reaching limit (var_task_cumul +1 is equal to campaign_size), the expression is max (0,0)
+            #   the model must do C/O because var_task_cumul[t2] has to be 0 (a new campaign starts).
+            #
+            # If not yet reaching limit (var_task_cumul +1 < campaign_size), the expression is max(0, -x)
+            #   model can still choose to do C/O by having var_reach_campaign_end to be 1 (if that brings a better obj)
             model.AddMaxEquality(
                 max_values[t1, t2],
                 [0, var_task_cumul[t1] + 1 - var_reach_campaign_end[t1]*campaign_size]

@@ -1,3 +1,6 @@
+# https://stackoverflow.com/questions/75588142
+# The answer is No. They are not compatible.
+
 from ortools.sat.python import cp_model
 
 model = cp_model.CpModel()

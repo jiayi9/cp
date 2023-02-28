@@ -5,12 +5,11 @@ from matplotlib.ticker import MaxNLocator
 import pandas as pd
 import string
 
-string.ascii_lowercase
-
 model = cp_model.CpModel()
 
-def generate_product_data(num_of_products, num_of_tasks_per_product):
 
+def generate_task_data(num_of_products, num_of_tasks_per_product):
+    """ Generate tasks of products (no more than 26 products) """
     products = string.ascii_uppercase[0:num_of_products]
     total_num_of_tasks = num_of_tasks_per_product*num_of_products
     tasks = {x for x in range(total_num_of_tasks)}
@@ -21,4 +20,4 @@ def generate_product_data(num_of_products, num_of_tasks_per_product):
         })
     return tasks, task_to_product
 
-generate_product_data(4, 3)
+

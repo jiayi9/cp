@@ -78,22 +78,14 @@ def run_model(num_tasks, campaign_size, print_result=True):
 
             # This is for fixed campaigning size. DO full-campaign or NOT DO.
             # model.Add(
-            #     var_task_cumul[t2] == var_task_cumul[t1] + 1 - var_task_reach_max[t1]*campaign_size
-            # ).OnlyEnforceIf(
-            #     literals[t1, t2]
-            # )
+            #    var_task_cumul[t2] == var_task_cumul[t1] + 1 - var_task_reach_max[t1]*campaign_size
+            # ).OnlyEnforceIf(literals[t1, t2])
 
-            # This is what we want for flexible campaigning but the following makes the model invalid
-            # The creator of or-tools has confirmed AddMaxEquality is not compatible with OnlyEnforceIf
+            # The creator has confirmed AddMaxEquality is not compatible with OnlyEnforceIf
             # model.AddMaxEquality(
             #     var_task_cumul[t2],
-            #     [
-            #         0,
-            #         var_task_cumul[t1] + 1 - var_task_reach_max[t1]*campaign_size
-            #     ]
-            # ).OnlyEnforceIf(
-            #     literals[t1, t2]
-            # )
+            #     [0,var_task_cumul[t1] + 1 - var_reach_campaign_end[t1]*campaign_size]
+            # ).OnlyEnforceIf(literals[t1, t2])
 
             # ! HERE IS THE CHANGE RECOMMENDED FOR FLEXIBLE CAMPAIGNING. BUT IN TWO STEPS !
             # NOTE var_reach_campaign_end ARE NOW OPEN BOOL DECISION VARIABLES.

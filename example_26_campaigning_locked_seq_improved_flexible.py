@@ -176,7 +176,7 @@ if __name__ == '__main__':
         'c2': model_times_campaign_2,
         'c5': model_times_campaign_5
     })
-    df.to_csv("example_26_result.csv")
+    print(df)
 
     print_unit_test_result(sizes,
                            model_times_campaign_2,

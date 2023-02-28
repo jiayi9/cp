@@ -16,7 +16,7 @@ def generate_one_product_data(num_tasks):
     return tasks, task_to_product
 
 
-def run_model(num_tasks, campaign_size, print_result = True):
+def run_model(num_tasks, campaign_size, print_result=True):
 
     # if campaign size is 2, then we need cumul indicator to be 0, 1
 
@@ -89,15 +89,22 @@ def run_model(num_tasks, campaign_size, print_result = True):
                 literals[t1, t2]
             )
 
-            model.AddMaxEquality(
-                var_task_cumul[t2],
-                [
-                    0,
-                    var_task_cumul[t1] + 1 - var_task_reach_max[t1]*(campaign_size-1)
-                ]
+            model.Add(
+                var_task_cumul[t2] == var_task_cumul[t1] + 1 - var_task_reach_max[t1]*campaign_size
             ).OnlyEnforceIf(
                 literals[t1, t2]
             )
+
+            # The following makes the model invalid
+            # model.AddMaxEquality(
+            #     var_task_cumul[t2],
+            #     [
+            #         0,
+            #         var_task_cumul[t1] + 1 - var_task_reach_max[t1]*campaign_size
+            #     ]
+            # ).OnlyEnforceIf(
+            #     literals[t1, t2]
+            # )
 
     model.AddCircuit(arcs)
 
@@ -123,18 +130,17 @@ def run_model(num_tasks, campaign_size, print_result = True):
         else:
             print(status)
 
-    return total_time
+    if status == cp_model.OPTIMAL:
+        return total_time
+    else:
+        return -999
 
 
-def print_unit_test_result(x, y1, y2, y3, y4, y5, title=''):
+def print_unit_test_result(x, y1, y2, title=''):
     ax = plt.figure().gca()
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    # plt.plot(x, y1, marker='o', label = 'Campaign size: 2')
-    # plt.plot(x, y2, marker='o', label = 'Campaign size: 3')
     plt.plot(x, y1,  label='Campaign size: 2')
-    plt.plot(x, y2,  label='Campaign size: 3')
-    plt.plot(x, y3,  label='Campaign size: 4')
-    plt.plot(x, y4,  label='Campaign size: 5')
+    plt.plot(x, y2,  label='Campaign size: 5')
     plt.legend()
     plt.title(title)
     plt.xlabel('The number of tasks')
@@ -144,32 +150,24 @@ def print_unit_test_result(x, y1, y2, y3, y4, y5, title=''):
 
 if __name__ == '__main__':
 
-    N = 80
-    sizes = range(2, N+1)
+    N = 60
+    sizes = range(2, N+1, 4)
     model_times_campaign_2 = []
-    model_times_campaign_3 = []
-    model_times_campaign_4 = []
     model_times_campaign_5 = []
 
     for num_task in sizes:
         print(num_task)
         model_times_campaign_2.append(run_model(num_task, campaign_size=2, print_result=False))
-        model_times_campaign_3.append(run_model(num_task, campaign_size=3, print_result=False))
-        model_times_campaign_4.append(run_model(num_task, campaign_size=4, print_result=False))
         model_times_campaign_5.append(run_model(num_task, campaign_size=5, print_result=False))
 
     df = pd.DataFrame({
         'num_tasks': sizes,
         'c2': model_times_campaign_2,
-        'c3': model_times_campaign_3,
-        'c4': model_times_campaign_4,
         'c5': model_times_campaign_5
     })
     df.to_csv("example_26_result.csv")
 
     print_unit_test_result(sizes,
                            model_times_campaign_2,
-                           model_times_campaign_3,
-                           model_times_campaign_4,
                            model_times_campaign_5,
                            'Scalability of Campaigning with Cumulative Indicator')

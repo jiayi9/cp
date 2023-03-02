@@ -29,11 +29,11 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     3. Distribute to m machines
     """
 
-    number_of_products = 2
-    num_of_tasks_per_product = 4
-    campaign_size = 3
-    number_of_machines = 2
-    print_result = True
+    # number_of_products = 2
+    # num_of_tasks_per_product = 4
+    # campaign_size = 2
+    # number_of_machines = 2
+    # print_result = True
 
     changeover_time = 2
     max_time = num_of_tasks_per_product*number_of_products*2
@@ -55,10 +55,10 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     var_machine_task_presences = {(m, t): model.NewBoolVar(f"pre_{m}_{t}") for t in tasks for m in machines}
 
     var_machine_task_cumul = {(m, t): model.NewIntVar(0, campaign_size-1, f"t_{t}_cu") for t in tasks for m in machines}
-    for product_idx, product in enumerate(range(number_of_products)):
-        print(product_idx*num_of_tasks_per_product)
-        for m in machines:
-            model.Add(var_machine_task_cumul[m, product_idx*num_of_tasks_per_product] == 0)
+    # for product_idx, product in enumerate(range(number_of_products)):
+    #     print(product_idx*num_of_tasks_per_product)
+    #     for m in machines:
+    #         model.Add(var_machine_task_cumul[m, product_idx*num_of_tasks_per_product] == 0)
 
     var_m_t_reach_campaign_end = {(m, t): model.NewBoolVar(f"t{t}_reach_max_on_m{m}") for t in tasks for m in machines}
     var_m_t_product_change = {(m, t): model.NewBoolVar(f"task_{t}_change_product_on_m{m}") for t in tasks for m in machines}
@@ -66,7 +66,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     # Heuristic: Lock the sequence of the tasks (assume the deadlines are in the task order
     # AND a task with later deadline shall not start earlier than a task with a earlier deadline)
 
-    print("Apply the tasks sequence heuristics")
+    print("\nApply the tasks sequence heuristics")
     # Option 1: Locking the sequence of tasks per product! This is slower (7.54s for 3, 4, 4)
     for product_idx, product in enumerate(range(number_of_products)):
         for task_id_in_product_group, task in enumerate(range(num_of_tasks_per_product)):
@@ -75,8 +75,8 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                 print(f"\nLocking {_index}", end=" ")
             else:
                 print(f" <= {_index}", end=" ")
-                for m in machines:
-                    model.Add(var_machine_task_cumul[m, _index-1] <= var_machine_task_cumul[m, _index])
+                model.Add(var_task_ends[_index-1] <= var_task_starts[_index])
+    print("\n")
 
     var_machine_task_intervals = {
         (m, t): model.NewOptionalIntervalVar(
@@ -87,7 +87,6 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
             f"task_{t}_interval_on_m_{m}")
         for t in tasks for m in machines
     }
-    #model.AddNoOverlap(var_task_intervals.values())
 
     # this task is only present in one machine
     for task in tasks:
@@ -123,8 +122,8 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     max_values = {(m, t1, t2): model.NewIntVar(0, max_time, f"{t1} -> {t2}")
                   for m in machines for t1 in tasks for t2 in tasks if t1 != t2}
 
-    arcs = []
     for m in machines:
+        arcs = []
         for t1 in tasks:
             arcs.append([-1, t1, model.NewBoolVar(f"first_to_{t1}")])
             arcs.append([t1, -1, model.NewBoolVar(f"{t1}_to_last")])
@@ -164,14 +163,28 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
     if print_result:
         if status == cp_model.OPTIMAL:
-            for task in tasks:
-                print(f'Task {task} {task_to_product[task]}',
-                      solver.Value(var_task_starts[task]),
-                      solver.Value(var_task_ends[task]),
-                      # solver.Value(var_task_cumul[task]),
-                      # solver.Value(var_reach_campaign_end[task]),
-                      # solver.Value(var_product_change[task]),
-                      )
+            L = []
+            for m in machines:
+                for task in tasks:
+                    if solver.Value(var_machine_task_presences[m, task]):
+                        tmp = [
+                            f"machine {m}",
+                            f"task {task}",
+                            task_to_product[task],
+                            solver.Value(var_task_starts[task]),
+                            solver.Value(var_task_ends[task]),
+                            solver.Value(var_machine_task_cumul[m, task]),
+                            solver.Value(var_m_t_reach_campaign_end[m, task]),
+                            solver.Value(var_m_t_product_change[m, task])
+                        ]
+                        L.append(tmp)
+            df = pd.DataFrame(L)
+            df.columns = ['machine', 'task', 'product', 'start', 'end', 'rank', 'flag', 'product_change']
+            df = df.sort_values(['machine', 'start'])
+            for m in machines:
+                print(f"\n======= Machine {m} =======")
+                df_tmp = df[df['machine']==f"machine {m}"]
+                print(df_tmp)
             print('-------------------------------------------------')
             print('Make-span:', solver.Value(make_span))
         elif status == cp_model.INFEASIBLE:
@@ -189,4 +202,4 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
 if __name__ == '__main__':
 
-    run_model(2, 4, 2, 2)
+    run_model(2, 4, 3, 3)

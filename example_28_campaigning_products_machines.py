@@ -54,18 +54,17 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     var_machine_task_ends = {(m, t): model.NewIntVar(0, max_time, f"m{m}_t{t}_end") for t in tasks for m in machines}
     var_machine_task_presences = {(m, t): model.NewBoolVar(f"pre_{m}_{t}") for t in tasks for m in machines}
 
-    var_machine_task_cumul = {(m, t): model.NewIntVar(0, campaign_size-1, f"t_{t}_cu") for t in tasks for m in machines}
-    # for product_idx, product in enumerate(range(number_of_products)):
-    #     print(product_idx*num_of_tasks_per_product)
-    #     for m in machines:
-    #         model.Add(var_machine_task_cumul[m, product_idx*num_of_tasks_per_product] == 0)
+    var_machine_task_rank = {(m, t): model.NewIntVar(0, campaign_size-1, f"t_{t}_cu") for t in tasks for m in machines}
+    for product_idx, product in enumerate(range(number_of_products)):
+        print(product_idx*num_of_tasks_per_product)
+        for m in machines:
+            model.Add(var_machine_task_rank[m, product_idx*num_of_tasks_per_product] == 0)
 
     var_m_t_reach_campaign_end = {(m, t): model.NewBoolVar(f"t{t}_reach_max_on_m{m}") for t in tasks for m in machines}
     var_m_t_product_change = {(m, t): model.NewBoolVar(f"task_{t}_change_product_on_m{m}") for t in tasks for m in machines}
 
     # Heuristic: Lock the sequence of the tasks (assume the deadlines are in the task order
     # AND a task with later deadline shall not start earlier than a task with a earlier deadline)
-
     print("\nApply the tasks sequence heuristics")
     # Option 1: Locking the sequence of tasks per product! This is slower (7.54s for 3, 4, 4)
     for product_idx, product in enumerate(range(number_of_products)):
@@ -78,6 +77,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                 model.Add(var_task_ends[_index-1] <= var_task_starts[_index])
     print("\n")
 
+    # These intervals is needed otherwise the duration is not constrained
     var_machine_task_intervals = {
         (m, t): model.NewOptionalIntervalVar(
             var_machine_task_starts[m, t],
@@ -88,7 +88,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
         for t in tasks for m in machines
     }
 
-    # this task is only present in one machine
+    # each task is only present in one machine
     for task in tasks:
         task_candidate_machines = machines
         tmp = [
@@ -97,7 +97,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
         ]
         model.AddExactlyOne(tmp)
 
-    # task level link to machine-task level
+    # link task-level to machine-task level for start time & end time
     for task in tasks:
         task_candidate_machines = machines
         for m in task_candidate_machines:
@@ -122,6 +122,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     max_values = {(m, t1, t2): model.NewIntVar(0, max_time, f"{t1} -> {t2}")
                   for m in machines for t1 in tasks for t2 in tasks if t1 != t2}
 
+    #
     for m in machines:
         arcs = []
         for t1 in tasks:
@@ -134,25 +135,29 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                     continue
                 arcs.append([t1, t2, literals[m, t1, t2]])
 
-                # [ task1 ] -> [ C/O ] -> [ task 2]
+                ## [ task1 ] -> [ C/O ] -> [ task 2]
+
+                # If A -> B then var_m_t_product_change=1
                 model.Add(var_m_t_product_change[m, t1] == product_change_indicator[t1, t2]).OnlyEnforceIf(
                     literals[m, t1, t2]
                 )
 
+                # If var_m_t_product_change=1 then the campaign must end
                 model.Add(var_m_t_reach_campaign_end[m, t1] >= var_m_t_product_change[m, t1])
 
+                # if the campaign ends then there must be changeover time
                 model.Add(
                     var_task_ends[t1] + var_m_t_reach_campaign_end[m, t1]*changeover_time <= var_task_starts[t2]
                 ).OnlyEnforceIf(
                     literals[m, t1, t2]
                 )
 
-                # allow flexible campaigning
+                # if model decides that campaign ends, then reset the rank for t2
                 model.AddMaxEquality(
                     max_values[m, t1, t2],
-                    [0, var_machine_task_cumul[m, t1] + 1 - var_m_t_reach_campaign_end[m, t1]*campaign_size]
+                    [0, var_machine_task_rank[m, t1] + 1 - var_m_t_reach_campaign_end[m, t1]*campaign_size]
                 )
-                model.Add(var_machine_task_cumul[m, t2] == max_values[m, t1, t2]).OnlyEnforceIf(literals[m, t1, t2])
+                model.Add(var_machine_task_rank[m, t2] == max_values[m, t1, t2]).OnlyEnforceIf(literals[m, t1, t2])
 
         model.AddCircuit(arcs)
 
@@ -173,7 +178,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                             task_to_product[task],
                             solver.Value(var_task_starts[task]),
                             solver.Value(var_task_ends[task]),
-                            solver.Value(var_machine_task_cumul[m, task]),
+                            solver.Value(var_machine_task_rank[m, task]),
                             solver.Value(var_m_t_reach_campaign_end[m, task]),
                             solver.Value(var_m_t_product_change[m, task])
                         ]

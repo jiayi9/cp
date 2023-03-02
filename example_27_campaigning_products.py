@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import pandas as pd
 import string
+from math import ceil
 
 model = cp_model.CpModel()
 
@@ -146,11 +147,14 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
 if __name__ == '__main__':
 
     _number_of_products = 3
-    _num_of_tasks_per_product = 20
+    _num_of_tasks_per_product = 4
     _campaign_size = 4
-    _make_span = (_num_of_tasks_per_product + 2 + 2)*_number_of_products-2
+    n = ceil(_num_of_tasks_per_product/_campaign_size)
+    _make_span = (_num_of_tasks_per_product + 2*n)*_number_of_products-2
     run_model(_number_of_products, _num_of_tasks_per_product, _campaign_size)
-    print('\nHelp text ONLY for 2 campaigns per product:')
-    print(f'Expecting make-span = [{_campaign_size}(max campaign) + 2(c/o) '
-          f'+ {_num_of_tasks_per_product-_campaign_size}(a small campaign) + '
-          f'2(c/o)] * {_number_of_products}(products) - 2(c/o) = {_make_span}')
+
+    print(f'\nExpected make-span if all right:'
+          f'\n = (_num_of_tasks_per_product + changeover_time*ceil(_num_of_tasks_per_product/_campaign_size))*'
+          f'_number_of_products - changeover_time '
+          f'\n = {_make_span}')
+

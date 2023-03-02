@@ -48,7 +48,6 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
     var_task_ends = {task: model.NewIntVar(0, max_time, f"task_{task}_end") for task in tasks}
     var_task_cumul = {task: model.NewIntVar(0, campaign_size-1, f"task_{task}_cumul") for task in tasks}
     for product_idx, product in enumerate(range(number_of_products)):
-        print(product_idx)
         model.Add(var_task_cumul[product_idx*num_of_tasks_per_product] == 0)
 
     var_reach_campaign_end = {task: model.NewBoolVar(f"task_{task}_reach_max") for task in tasks}
@@ -147,7 +146,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
 if __name__ == '__main__':
 
     _number_of_products = 3
-    _num_of_tasks_per_product = 7
+    _num_of_tasks_per_product = 20
     _campaign_size = 4
     _make_span = (_num_of_tasks_per_product + 2 + 2)*_number_of_products-2
     run_model(_number_of_products, _num_of_tasks_per_product, _campaign_size)
@@ -155,4 +154,3 @@ if __name__ == '__main__':
     print(f'Expecting make-span = [{_campaign_size}(max campaign) + 2(c/o) '
           f'+ {_num_of_tasks_per_product-_campaign_size}(a small campaign) + '
           f'2(c/o)] * {_number_of_products}(products) - 2(c/o) = {_make_span}')
-

@@ -38,17 +38,19 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     changeover_time = 2
     max_time = num_of_tasks_per_product*number_of_products*2
     processing_time = 1
+    machines = {x for x in range(number_of_machines)}
 
     tasks, task_to_product = generate_task_data(number_of_products, num_of_tasks_per_product)
     print(tasks, task_to_product)
 
-    changeover_indicator = {
+    product_change_indicator = {
         (t1, t2): 0 if task_to_product[t1] == task_to_product[t2] else 1 for t1 in tasks for t2 in tasks if t1 != t2
     }
 
     var_task_starts = {task: model.NewIntVar(0, max_time, f"task_{task}_start") for task in tasks}
     var_task_ends = {task: model.NewIntVar(0, max_time, f"task_{task}_end") for task in tasks}
-    var_task_cumul = {task: model.NewIntVar(0, campaign_size-1, f"task_{task}_cumul") for task in tasks}
+
+    var_task_cumul = {(m, task): model.NewIntVar(0, campaign_size-1, f"task_{task}_cumul") for task in tasks for m in machines}
     model.Add(var_task_cumul[0] == 0)
     var_reach_campaign_end = {task: model.NewBoolVar(f"task_{task}_reach_max") for task in tasks}
     var_product_change = {task: model.NewBoolVar(f"task_{task}_go_to_different_product") for task in tasks}

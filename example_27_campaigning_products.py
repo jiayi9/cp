@@ -47,7 +47,10 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
     var_task_starts = {task: model.NewIntVar(0, max_time, f"task_{task}_start") for task in tasks}
     var_task_ends = {task: model.NewIntVar(0, max_time, f"task_{task}_end") for task in tasks}
     var_task_cumul = {task: model.NewIntVar(0, campaign_size-1, f"task_{task}_cumul") for task in tasks}
-    model.Add(var_task_cumul[0] == 0)
+    for product_idx, product in enumerate(range(number_of_products)):
+        print(product_idx)
+        model.Add(var_task_cumul[product_idx*num_of_tasks_per_product] == 0)
+
     var_reach_campaign_end = {task: model.NewBoolVar(f"task_{task}_reach_max") for task in tasks}
     var_product_change = {task: model.NewBoolVar(f"task_{task}_go_to_different_product") for task in tasks}
 

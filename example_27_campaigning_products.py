@@ -47,6 +47,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
 
     var_task_starts = {task: model.NewIntVar(0, max_time, f"task_{task}_start") for task in tasks}
     var_task_ends = {task: model.NewIntVar(0, max_time, f"task_{task}_end") for task in tasks}
+
     var_task_cumul = {task: model.NewIntVar(0, campaign_size-1, f"task_{task}_cumul") for task in tasks}
     for product_idx, product in enumerate(range(number_of_products)):
         model.Add(var_task_cumul[product_idx*num_of_tasks_per_product] == 0)
@@ -54,12 +55,28 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
     var_reach_campaign_end = {task: model.NewBoolVar(f"task_{task}_reach_max") for task in tasks}
     var_product_change = {task: model.NewBoolVar(f"task_{task}_go_to_different_product") for task in tasks}
 
-    # Lock the sequence of the tasks (assume the deadlines are in this sequence !)
-    # A relative later task shall not start earlier than a relative earlier task
-    # And make them
-    for task in tasks:
-        if task != 0:
-            model.Add(var_task_starts[task-1] <= var_task_starts[task])
+    # Heuristic: Lock the sequence of the tasks (assume the deadlines are in the task order
+    # AND a task with later deadline shall not start earlier than a task with a earlier deadline)
+
+    print("Apply the tasks sequence heuristics")
+    # Option 1: Locking the sequence of tasks per product! This is slower (7.54s for 3, 4, 4)
+    for product_idx, product in enumerate(range(number_of_products)):
+        for task_id_in_product_group, task in enumerate(range(num_of_tasks_per_product)):
+            _index = product_idx * num_of_tasks_per_product + task_id_in_product_group
+            if task_id_in_product_group == 0:
+                print(f"\nLocking {_index}", end=" ")
+            else:
+                print(f" <= {_index}", end=" ")
+                model.Add(var_task_cumul[_index-1] <= var_task_cumul[_index])
+
+    # Option 2: Locking the sequence of all tasks! This is quicker (0.10s for 3, 4, 4)
+    # print("Locking 0", end=" ")
+    # for task in tasks:
+    #     if task != 0:
+    #         print(f"<= {task}", end=" ")
+    #         model.Add(var_task_starts[task-1] <= var_task_starts[task])
+
+    print("\n")
 
     var_task_intervals = {
         t: model.NewIntervalVar(var_task_starts[t], processing_time, var_task_ends[t], f"task_{t}_interval")
@@ -93,7 +110,6 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
             )
 
             model.Add(var_reach_campaign_end[t1] >= var_product_change[t1])
-
 
             model.Add(
                 var_task_ends[t1] + var_reach_campaign_end[t1]*changeover_time <= var_task_starts[t2]
@@ -151,10 +167,10 @@ if __name__ == '__main__':
     _campaign_size = 4
     n = ceil(_num_of_tasks_per_product/_campaign_size)
     _make_span = (_num_of_tasks_per_product + 2*n)*_number_of_products-2
-    run_model(_number_of_products, _num_of_tasks_per_product, _campaign_size)
+    run_time = run_model(_number_of_products, _num_of_tasks_per_product, _campaign_size)
+    print(f"Runtime: {round(run_time, 2)}s")
 
     print(f'\nExpected make-span if all right:'
           f'\n = (_num_of_tasks_per_product + changeover_time*ceil(_num_of_tasks_per_product/_campaign_size))*'
           f'_number_of_products - changeover_time '
           f'\n = {_make_span}')
-

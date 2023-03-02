@@ -50,15 +50,18 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     var_task_starts = {task: model.NewIntVar(0, max_time, f"task_{task}_start") for task in tasks}
     var_task_ends = {task: model.NewIntVar(0, max_time, f"task_{task}_end") for task in tasks}
 
-    var_machine_task_starts = {(m, t): model.NewIntVar(0, max_time, f"start_{m}_{t}") for t in tasks for m in machines}
-    var_machine_task_ends = {(m, t): model.NewIntVar(0, max_time, f"end_{m}_{t}") for t in tasks for m in machines}
-    var_machine_task_presences = {(m, t): model.NewBoolVar(f"presence_{m}_{t}") for t in tasks for m in machines}
+    var_machine_task_starts = {(m, t): model.NewIntVar(0, max_time, f"m{m}_t{t}_start") for t in tasks for m in machines}
+    var_machine_task_ends = {(m, t): model.NewIntVar(0, max_time, f"m{m}_t{t}_end") for t in tasks for m in machines}
+    var_machine_task_presences = {(m, t): model.NewBoolVar(f"pre_{m}_{t}") for t in tasks for m in machines}
 
-    var_maetask_cumul = {(m, t): model.NewIntVar(0, campaign_size-1, f"task_{task}_cumul") for t in tasks for m in machines}
+    var_machine_task_cumul = {(m, t): model.NewIntVar(0, campaign_size-1, f"t_{t}_cu") for t in tasks for m in machines}
 
-    model.Add(var_task_cumul[0] == 0)
-    var_reach_campaign_end = {task: model.NewBoolVar(f"task_{task}_reach_max") for task in tasks}
-    var_product_change = {task: model.NewBoolVar(f"task_{task}_go_to_different_product") for task in tasks}
+    for m in machines:
+        for product_idx, product in enumerate(range(number_of_products)):
+            model.Add(var_machine_task_cumul[m, product_idx * num_of_tasks_per_product] == 0)
+
+    var_m_t_reach_campaign_end = {(m, t): model.NewBoolVar(f"t{t}_reach_max_on_m{m}") for t in tasks for m in machines}
+    var_m_t_product_change = {(m, t): model.NewBoolVar(f"task_{t}_go_to_different_product_on_m{m}") for t in tasks for m in machines}
 
     # Lock the sequence of the tasks (assume the deadlines are in this sequence !)
     # A relative later task shall not start earlier than a relative earlier task

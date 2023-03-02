@@ -41,7 +41,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     machines = {x for x in range(number_of_machines)}
 
     tasks, task_to_product = generate_task_data(number_of_products, num_of_tasks_per_product)
-    print(tasks, task_to_product)
+    print(tasks, task_to_product, '\n')
 
     product_change_indicator = {
         (t1, t2): 0 if task_to_product[t1] == task_to_product[t2] else 1 for t1 in tasks for t2 in tasks if t1 != t2
@@ -56,7 +56,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
     var_machine_task_rank = {(m, t): model.NewIntVar(0, campaign_size-1, f"t_{t}_cu") for t in tasks for m in machines}
     for product_idx, product in enumerate(range(number_of_products)):
-        print(product_idx*num_of_tasks_per_product)
+        print(f"Lock the rank of task {product_idx*num_of_tasks_per_product} to zero on all machines")
         for m in machines:
             model.Add(var_machine_task_rank[m, product_idx*num_of_tasks_per_product] == 0)
 
@@ -71,7 +71,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
         for task_id_in_product_group, task in enumerate(range(num_of_tasks_per_product)):
             _index = product_idx * num_of_tasks_per_product + task_id_in_product_group
             if task_id_in_product_group == 0:
-                print(f"\nLocking {_index}", end=" ")
+                print(f"\nLock {_index}", end=" ")
             else:
                 print(f" <= {_index}", end=" ")
                 model.Add(var_task_ends[_index-1] <= var_task_starts[_index])
@@ -210,4 +210,5 @@ if __name__ == '__main__':
     # number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines
     args = 2, 4, 3, 3
 
-    run_model(*args)
+    runtime = run_model(*args)
+    print(f"Solving time: {round(runtime, 2)}s")

@@ -202,4 +202,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
 if __name__ == '__main__':
 
-    run_model(2, 4, 3, 3)
+    # number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines
+    args = 2, 4, 3, 3
+
+    run_model(*args)

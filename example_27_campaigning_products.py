@@ -38,9 +38,9 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
     processing_time = 1
 
     tasks, task_to_product = generate_task_data(number_of_products, num_of_tasks_per_product)
-    print(tasks, task_to_product)
+    print(f'\nInput data: {task_to_product}\n')
 
-    changeover_indicator = {
+    product_change_indicator = {
         (t1, t2): 0 if task_to_product[t1] == task_to_product[t2] else 1 for t1 in tasks for t2 in tasks if t1 != t2
     }
 
@@ -85,7 +85,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
             arcs.append([t1, t2, literals[t1, t2]])
 
             # [ task1 ] -> [ C/O ] -> [ task 2]
-            model.Add(var_product_change[t1] == changeover_indicator[t1, t2]).OnlyEnforceIf(
+            model.Add(var_product_change[t1] == product_change_indicator[t1, t2]).OnlyEnforceIf(
                 literals[t1, t2]
             )
 
@@ -115,6 +115,8 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
     if print_result:
         if status == cp_model.OPTIMAL:
             for task in tasks:
+                if task%num_of_tasks_per_product == 0:
+                    print('--------- product divider ---------\n')
                 print(f'Task {task} {task_to_product[task]}',
                       solver.Value(var_task_starts[task]),
                       solver.Value(var_task_ends[task]),
@@ -122,6 +124,8 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
                       solver.Value(var_reach_campaign_end[task]),
                       solver.Value(var_product_change[task]),
                       )
+                if solver.Value(var_reach_campaign_end[task]):
+                    print('-- campaign ends --\n')
             print('-------------------------------------------------')
             print('Make-span:', solver.Value(make_span))
         elif status == cp_model.INFEASIBLE:
@@ -139,5 +143,13 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, print
 
 if __name__ == '__main__':
 
-    print('Expecting make-span = [4(campaign) + 2(c/o) + 3(campaign) + 2(c/o)] * 3(products) - 2(c/o) = 31')
-    run_model(3, 7, 4)
+    _number_of_products = 3
+    _num_of_tasks_per_product = 7
+    _campaign_size = 4
+    _make_span = (_num_of_tasks_per_product + 2 + 2)*_number_of_products-2
+    run_model(_number_of_products, _num_of_tasks_per_product, _campaign_size)
+    print('\nHelp text ONLY for 2 campaigns per product:')
+    print(f'Expecting make-span = [{_campaign_size}(max campaign) + 2(c/o) '
+          f'+ {_num_of_tasks_per_product-_campaign_size}(a small campaign) + '
+          f'2(c/o)] * {_number_of_products}(products) - 2(c/o) = {_make_span}')
+

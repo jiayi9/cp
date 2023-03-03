@@ -1,32 +1,8 @@
-# def generation_combinations_helper(lst, group_size, start_index):
-#     if group_size == 0 or start_index == len(lst):
-#         return [[]]
-#
-#     result = []
-#
-#     for i in range(start_index, len(lst)):
-#         for combo in generation_combinations_helper(lst, group_size-1, i + 1):
-#             result.append([lst[i]] + combo)
-#     return result
-#
-#
-# def generate_combinations(lst, max_group_size):
-#     result=[]
-#     for i in range(1,max_group_size+1):
-#         result += generation_combinations_helper(lst, i, 0)
-#
-#     return result
-#
-#
-# n = 3
-# tasks = [i for i in range(n)]
-# max_group_size = 2
-#
-# combinations = generate_combinations(tasks, max_group_size)
-# for combo in combinations:
-#     print(combo)
+import pandas as pd
 
-##################################################################################################################
+
+def flatten(l):
+    return [item for sublist in l for item in sublist]
 
 
 def group_elements(lst, max_group_size):
@@ -39,19 +15,43 @@ def group_elements(lst, max_group_size):
             current_group = lst[i:i+group_size]
             for remaining_groups in group_elements(lst[i+group_size:], max_group_size):
                 result.append([current_group] + remaining_groups)
+
     return result
 
+
+def generate_campaigns(lst, max_group_size):
+
+    result = group_elements(lst, max_group_size)
+
+    output = []
+    for sublist in result:
+        if len(flatten(sublist)) == len(lst):
+            output.append(sublist)
+    return output
+
+
 # Example 1
-lst = [1, 2, 3]
-max_group_size = 2
-x = group_elements(lst, max_group_size)
-x[0][0]
-x[0][0][0]
-x[0][0][1]
-x[0][0][2]
-
-
-# Example 2
 lst = [1, 2, 3, 4]
 max_group_size = 2
-group_elements(lst, max_group_size)
+output = generate_campaigns(lst, max_group_size)
+
+if __name__ == "__main__":
+
+    task_sizes = list(range(2, 20))
+    campaign_sizes = list(range(2, 7))
+
+    L = []
+    for task_size in task_sizes:
+        print(task_size)
+        for campaign_size in campaign_sizes:
+            if task_size >= campaign_size:
+                tasks = list(range(task_size))
+                groups = generate_campaigns(tasks, campaign_size)
+                tmp = [task_size, campaign_size, len(groups)]
+                L.append(tmp)
+
+    df = pd.DataFrame(L)
+    df.columns = ['task_size', 'campaign_size', 'possible_grouping']
+    print(df)
+
+    df.to_csv("C:/Temp/campaigning_possibilities.csv", index=False)

@@ -37,7 +37,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     # print_result = True
 
     changeover_time = 2
-    max_time = num_of_tasks_per_product*number_of_products*2
+    max_time = num_of_tasks_per_product*number_of_products*3
     processing_time = 1
     machines = {x for x in range(number_of_machines)}
 
@@ -64,6 +64,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     var_m_t_reach_campaign_end = {(m, t): model.NewBoolVar(f"t{t}_reach_max_on_m{m}") for t in tasks for m in machines}
     var_m_t_product_change = {(m, t): model.NewBoolVar(f"task_{t}_change_product_on_m{m}") for t in tasks for m in machines}
 
+    # This is optional
     model.AddDecisionStrategy(
         var_m_t_product_change.values(),
         cp_model.CHOOSE_FIRST,
@@ -118,7 +119,9 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
     # Set objective to minimize make-span
     make_span = model.NewIntVar(0, max_time, "make_span")
+    total_changeover_time = model.NewIntVar(0, max_time, "total_changeover_time")
     model.AddMaxEquality(make_span, [var_task_ends[task] for task in tasks])
+    model.Add(total_changeover_time == sum(var_m_t_reach_campaign_end[m,t] for m in machines for t in tasks))
     model.Minimize(make_span)
 
     # the bool variables to indicator if t1 -> t2
@@ -142,7 +145,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                     continue
                 arcs.append([t1, t2, literals[m, t1, t2]])
 
-                # If A -> B then var_m_t_product_change=1
+                # If A -> B then var_m_t_product_change>=1  (can be 0 if the last task in a machine)
                 model.Add(var_m_t_product_change[m, t1] >= product_change_indicator[t1, t2]).OnlyEnforceIf(
                     literals[m, t1, t2]
                 )
@@ -173,15 +176,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     status = solver.Solve(model=model)
     total_time = time() - start
 
-    for m in machines:
-        print(f"\n--------------machine {m}-------------")
-        for t1 in tasks:
-            for t2 in tasks:
-                if t1 == t2:
-                    continue
-                if solver.Value(literals[m, t1, t2]):
-                    print(f"{t1} -> {t2}", solver.Value(literals[m, t1, t2]))
-
+    # show the result if getting the optimal one
     if print_result:
         if status == cp_model.OPTIMAL:
             big_list = []

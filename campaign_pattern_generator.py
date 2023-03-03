@@ -1,11 +1,13 @@
 import pandas as pd
 
 
-def flatten(l):
-    return [item for sublist in l for item in sublist]
+def flatten(lst):
+    """ flatten a list  """
+    return [item for sublist in lst for item in sublist]
 
 
 def group_elements(lst, max_group_size):
+    """ the recursive subgroup generator """
     if not lst:
         return [[]]
 
@@ -20,9 +22,9 @@ def group_elements(lst, max_group_size):
 
 
 def generate_campaigns(lst, max_group_size):
+    """ the campaign pattern generator assuming the sequence of the tasks is fixed """
 
     result = group_elements(lst, max_group_size)
-
     output = []
     for sublist in result:
         if len(flatten(sublist)) == len(lst):
@@ -30,12 +32,21 @@ def generate_campaigns(lst, max_group_size):
     return output
 
 
-# Example 1
-lst = [1, 2, 3, 4]
-max_group_size = 2
-output = generate_campaigns(lst, max_group_size)
+def run_example():
+    """ a test """
+    lst = [1, 2, 3, 4]
+    max_group_size = 2
+    campaign_patterns = generate_campaigns(lst, max_group_size)
+    print(f"This is an example\n"
+          f"Tasks: {lst}, max campaign size: {max_group_size} \n"
+          f"All possible campaign patterns:")
+    for campaign_pattern in campaign_patterns:
+        print(campaign_pattern)
+
 
 if __name__ == "__main__":
+
+    run_example()
 
     task_sizes = list(range(2, 20))
     campaign_sizes = list(range(2, 7))

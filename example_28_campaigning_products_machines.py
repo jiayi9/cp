@@ -2,6 +2,7 @@ from ortools.sat.python import cp_model
 from time import time
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from ortools.sat import cp_model_pb2
 import pandas as pd
 import string
 
@@ -62,6 +63,12 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
     var_m_t_reach_campaign_end = {(m, t): model.NewBoolVar(f"t{t}_reach_max_on_m{m}") for t in tasks for m in machines}
     var_m_t_product_change = {(m, t): model.NewBoolVar(f"task_{t}_change_product_on_m{m}") for t in tasks for m in machines}
+
+    model.AddDecisionStrategy(
+        var_m_t_product_change.values(),
+        cp_model.CHOOSE_FIRST,
+        cp_model.SELECT_MIN_VALUE
+    )
 
     # Heuristic: Lock the sequence of the tasks (assume the deadlines are in the task order
     # AND a task with later deadline shall not start earlier than a task with a earlier deadline)
@@ -136,7 +143,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                 arcs.append([t1, t2, literals[m, t1, t2]])
 
                 # If A -> B then var_m_t_product_change=1
-                model.Add(var_m_t_product_change[m, t1] == product_change_indicator[t1, t2]).OnlyEnforceIf(
+                model.Add(var_m_t_product_change[m, t1] >= product_change_indicator[t1, t2]).OnlyEnforceIf(
                     literals[m, t1, t2]
                 )
 
@@ -165,6 +172,15 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     start = time()
     status = solver.Solve(model=model)
     total_time = time() - start
+
+    for m in machines:
+        print(f"\n--------------machine {m}-------------")
+        for t1 in tasks:
+            for t2 in tasks:
+                if t1 == t2:
+                    continue
+                if solver.Value(literals[m, t1, t2]):
+                    print(f"{t1} -> {t2}", solver.Value(literals[m, t1, t2]))
 
     if print_result:
         if status == cp_model.OPTIMAL:

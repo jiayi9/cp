@@ -75,7 +75,7 @@ status = solver.Solve(model, solution_printer)
 
 # Create the CP-SAT model.
 
-
+if True:
     model = cp_model.CpModel()
 
     # Declare our two primary variables.

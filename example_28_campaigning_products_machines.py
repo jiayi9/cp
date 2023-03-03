@@ -9,7 +9,7 @@ model = cp_model.CpModel()
 
 
 def generate_task_data(num_of_products, num_of_tasks_per_product):
-    """ Generate tasks of products (no more than 26 products) """
+    """ Generate the same number of tasks for multiple products (no more than 26 products please) """
     products = string.ascii_uppercase[0:num_of_products]
     total_num_of_tasks = num_of_tasks_per_product*num_of_products
     tasks = {x for x in range(total_num_of_tasks)}
@@ -23,10 +23,10 @@ def generate_task_data(num_of_products, num_of_tasks_per_product):
 
 def run_model(number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines, print_result=True):
     """
-    Do changeovers if either of the following occurs:
-    1. Changeover between different products: [A] -> changeover -> [B]
-    2. Previous campaign reaching  size limit: [A ... A]  -> changeover -> next any campaign
-    3. Distribute to m machines
+    Allocate to tasks to multiple machines
+    And do changeover if either of the following occurs:
+    1. Switch between different products: [A campaign] -> changeover -> [B campaign]
+    2. Previous campaign reaching the size limit: [A FULL campaign]  -> changeover -> next any campaign
     """
 
     # number_of_products = 2
@@ -122,7 +122,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     max_values = {(m, t1, t2): model.NewIntVar(0, max_time, f"{t1} -> {t2}")
                   for m in machines for t1 in tasks for t2 in tasks if t1 != t2}
 
-    #
+    # schedule the tasks
     for m in machines:
         arcs = []
         for t1 in tasks:
@@ -135,8 +135,6 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                     continue
                 arcs.append([t1, t2, literals[m, t1, t2]])
 
-                ## [ task1 ] -> [ C/O ] -> [ task 2]
-
                 # If A -> B then var_m_t_product_change=1
                 model.Add(var_m_t_product_change[m, t1] == product_change_indicator[t1, t2]).OnlyEnforceIf(
                     literals[m, t1, t2]
@@ -146,13 +144,15 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                 model.Add(var_m_t_reach_campaign_end[m, t1] >= var_m_t_product_change[m, t1])
 
                 # if the campaign ends then there must be changeover time
+                # [ task1 ] -> [ C/O ] -> [ task 2]
                 model.Add(
                     var_task_ends[t1] + var_m_t_reach_campaign_end[m, t1]*changeover_time <= var_task_starts[t2]
                 ).OnlyEnforceIf(
                     literals[m, t1, t2]
                 )
 
-                # if model decides that campaign ends, then reset the rank for t2
+                # model could also decide to end the campaign before it reaches size limit, then reset the rank for t2
+                # has to do this in two steps since AddMaxEquality is not compatible with OnlyEnforceIf
                 model.AddMaxEquality(
                     max_values[m, t1, t2],
                     [0, var_machine_task_rank[m, t1] + 1 - var_m_t_reach_campaign_end[m, t1]*campaign_size]
@@ -168,7 +168,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
     if print_result:
         if status == cp_model.OPTIMAL:
-            L = []
+            big_list = []
             for m in machines:
                 for task in tasks:
                     if solver.Value(var_machine_task_presences[m, task]):
@@ -182,8 +182,8 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                             solver.Value(var_m_t_reach_campaign_end[m, task]),
                             solver.Value(var_m_t_product_change[m, task])
                         ]
-                        L.append(tmp)
-            df = pd.DataFrame(L)
+                        big_list.append(tmp)
+            df = pd.DataFrame(big_list)
             df.columns = ['machine', 'task', 'product', 'start', 'end', 'rank', 'flag', 'product_change']
             df = df.sort_values(['machine', 'start'])
             for m in machines:

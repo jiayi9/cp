@@ -110,7 +110,7 @@ fig.update_layout(
         title='Schedule',
         bargap=0.1,
         width=2000,
-        height=300,
+        height=400,
         xaxis_title="time",
         yaxis_title="",
         title_x=0.5,

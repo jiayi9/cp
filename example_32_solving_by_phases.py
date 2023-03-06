@@ -6,8 +6,6 @@ from ortools.sat import cp_model_pb2
 import pandas as pd
 import string
 
-model = cp_model.CpModel()
-
 
 def generate_task_data(num_of_products, num_of_tasks_per_product):
     """ Generate the same number of tasks for multiple products (no more than 26 products please) """
@@ -22,19 +20,9 @@ def generate_task_data(num_of_products, num_of_tasks_per_product):
     return tasks, task_to_product
 
 
-def run_model(number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines, print_result=True):
-    """
-    Allocate to tasks to multiple machines
-    And do changeover if either of the following occurs:
-    1. Switch between different products: [A campaign] -> changeover -> [B campaign]
-    2. Previous campaign reaching the size limit: [A FULL campaign]  -> changeover -> next any campaign
-    """
+def create_model(number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines, print_result=True):
 
-    # number_of_products = 2
-    # num_of_tasks_per_product = 4
-    # campaign_size = 2
-    # number_of_machines = 2
-    # print_result = True
+    model = cp_model.CpModel()
 
     changeover_time = 2
     max_time = num_of_tasks_per_product*number_of_products*3
@@ -173,55 +161,36 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
         model.AddCircuit(arcs)
 
-    solver = cp_model.CpSolver()
-    start = time()
-    status = solver.Solve(model=model)
-    total_time = time() - start
-
-    # show the result if getting the optimal one
-    if print_result:
-        if status == cp_model.OPTIMAL:
-            big_list = []
-            for m in machines:
-                for task in tasks:
-                    if solver.Value(var_machine_task_presences[m, task]):
-                        tmp = [
-                            f"machine {m}",
-                            f"task {task}",
-                            task_to_product[task],
-                            solver.Value(var_task_starts[task]),
-                            solver.Value(var_task_ends[task]),
-                            solver.Value(var_machine_task_rank[m, task]),
-                            solver.Value(var_m_t_product_change[m, task]),
-                            solver.Value(var_m_t_reach_campaign_end[m, task])
-                        ]
-                        big_list.append(tmp)
-            df = pd.DataFrame(big_list)
-            df.columns = ['machine', 'task', 'prd', 'start', 'end', 'rank', 'prd_chg', 'c/o']
-            df = df.sort_values(['machine', 'start'])
-            for m in machines:
-                print(f"\n======= Machine {m} =======")
-                df_tmp = df[df['machine']==f"machine {m}"]
-                print(df_tmp)
-            print('-------------------------------------------------')
-            print('Make-span:', solver.Value(make_span))
-        elif status == cp_model.INFEASIBLE:
-            print("Infeasible")
-        elif status == cp_model.MODEL_INVALID:
-            print("Model invalid")
-        else:
-            print(status)
-
-    if status == cp_model.OPTIMAL:
-        return total_time
-    else:
-        return -999
+    return model
 
 
-if __name__ == '__main__':
+# This takes 16 seconds
+model = create_model(4, 4, 3, 2)
 
-    # number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines
-    args = 4, 4, 3, 3
+solver = cp_model.CpSolver()
+#solver.parameters.max_time_in_seconds = 10.0
+start = time()
+status = solver.Solve(model=model)
+total_time = time() - start
 
-    runtime = run_model(*args)
-    print(f"Solving time: {round(runtime, 2)}s")
+print(total_time)
+
+#
+# @dataclass
+# class PhaseParameters:
+#     """  Gather different input optimisation parameters that can be set for each phase. """
+#
+#     obj_phase: str = None
+#     max_time_in_seconds: int = None
+#     solution_count_limit: int = None
+#     restart: bool = False
+#
+#
+# phase_1 = PhaseParameters('phase_1', 10)
+# phase_2 = PhaseParameters('phase_2', 10)
+#
+#
+
+
+# show the result if getting the optimal one
+

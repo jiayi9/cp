@@ -42,7 +42,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
     machines = {x for x in range(number_of_machines)}
 
     tasks, task_to_product = generate_task_data(number_of_products, num_of_tasks_per_product)
-    print('Input data:\nTasks:', tasks, task_to_product, '\n')
+    print('Input data:\nTasks:', tasks, task_to_product)
 
     product_change_indicator = {
         (t1, t2): 0 if task_to_product[t1] == task_to_product[t2] else 1 for t1 in tasks for t2 in tasks if t1 != t2
@@ -75,7 +75,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 
     # Heuristic: Lock the sequence of the tasks (assume the deadlines are in the task order
     # AND a task with later deadline shall not start earlier than a task with a earlier deadline)
-    print("\nApply the tasks sequence heuristics")
+    print("Apply the tasks sequence heuristics")
     # Option 1: Locking the sequence of tasks per product! This is slower (7.54s for 3, 4, 4)
     for product_idx, product in enumerate(range(number_of_products)):
         for task_id_in_product_group, task in enumerate(range(num_of_tasks_per_product)):
@@ -226,7 +226,7 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
 if __name__ == '__main__':
 
     # number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines
-    args = 5, 5, 3, 3
+    args = 4, 4, 3, 3
 
     runtime = run_model(*args)
     print(f"Solving time: {round(runtime, 2)}s")

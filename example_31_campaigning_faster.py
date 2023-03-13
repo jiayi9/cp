@@ -150,7 +150,6 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                 if t1 > t2:
                     model.Add(literals[m, t1, t2] == 0)
 
-
                 arcs.append([t1, t2, literals[m, t1, t2]])
 
                 # If A -> B then var_m_t_product_change>=1  (can be 0 if the last task in a machine)

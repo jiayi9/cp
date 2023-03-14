@@ -147,6 +147,8 @@ def run_model(number_of_products, num_of_tasks_per_product, campaign_size, numbe
                     continue
 
                 # this accelerates code much
+                # if t1 > t2 and task_to_product[t1]==task_to_product[t2]:
+                #     model.Add(literals[m, t1, t2] == 0)
                 if t1 > t2:
                     model.Add(literals[m, t1, t2] == 0)
 

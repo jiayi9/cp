@@ -92,7 +92,7 @@ def run_model(num_of_tasks=3, break_offset=0):
         [var_task_ends[task] for task in tasks]
     )
 
-    model.Minimize(make_span + sum(var_task_durations))
+    model.Minimize(make_span + sum(var_task_durations.values()))
     # model.Minimize(sum(var_task_durations))
 
     solver = cp_model.CpSolver()

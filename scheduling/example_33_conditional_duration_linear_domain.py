@@ -15,7 +15,7 @@ if __name__ == '__main__':
     where x represent a unit duration break period
     
     """
-    break_offset = 0
+    break_offset = 1
 
     num_of_tasks = 3
     max_time = num_of_tasks*3
@@ -89,7 +89,7 @@ if __name__ == '__main__':
         [var_task_ends[task] for task in tasks]
     )
 
-    model.Minimize(make_span + sum(var_task_durations))
+    model.Minimize(make_span + sum(var_task_durations.values()))
     # model.Minimize(sum(var_task_durations))
 
     solver = cp_model.CpSolver()

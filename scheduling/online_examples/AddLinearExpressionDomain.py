@@ -15,7 +15,7 @@ for ind_value in [0, 1]:
         a_domain = cp_model.Domain.FromIntervals([[1, 3], [5, 7]])
         b_domain = cp_model.Domain.FromIntervals([[0], [4], [8,20]])
 
-            model.AddLinearExpressionInDomain(x, a_domain).OnlyEnforceIf(x_is_in_the_domain)
+        model.AddLinearExpressionInDomain(x, a_domain).OnlyEnforceIf(x_is_in_the_domain)
         model.AddLinearExpressionInDomain(x, b_domain).OnlyEnforceIf(x_is_in_the_domain.Not())
 
         model.Add(x_is_in_the_domain==ind_value)
@@ -35,6 +35,7 @@ for ind_value in [0, 1]:
         })
 
         df = pd.concat([df, df_tmp], axis=0)
+
 
 from ortools.sat.python import cp_model
 

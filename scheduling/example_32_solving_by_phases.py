@@ -167,16 +167,15 @@ def create_model(number_of_products, num_of_tasks_per_product, campaign_size, nu
 # This takes 16 seconds
 model = create_model(3, 4, 3, 2)
 
-# solver = cp_model.CpSolver()
-# #solver.parameters.max_time_in_seconds = 10.0
-# start = time()
-# status = solver.Solve(model=model)
-# total_time = time() - start
-# print(total_time)
+solver = cp_model.CpSolver()
+start = time()
+status = solver.Solve(model=model)
+total_time = time() - start
+print(total_time, status)
 
 
 solver = cp_model.CpSolver()
-solver.parameters.max_time_in_seconds = 1.0
+solver.parameters.max_time_in_seconds = 0.5
 start = time()
 status = solver.Solve(model=model)
 total_time = time() - start

@@ -5,24 +5,24 @@ from matplotlib.ticker import MaxNLocator
 from ortools.sat import cp_model_pb2
 import pandas as pd
 import string
+from tqdm import tqdm
 
 
-if __name__ == '__main__':
+def run_model(num_of_tasks=3, break_offset=0):
     """
     Offset = 0:
         | x |   |   | x |   |   | x |   |   |
     Offset = 1:
-        |   | x |   |   | x |   |   | x |   |    
+        |   | x |   |   | x |   |   | x |   |
     Offset = 2:
-        |   |   | x |   |   | x |   |   | x |    
-        
-    where x represent a unit duration break period
-    
-    """
-    break_offset = 1
+        |   |   | x |   |   | x |   |   | x |
 
-    num_of_tasks = 5
-    max_time = num_of_tasks*3
+    where x represent a unit duration break period
+
+    """
+    break_offset = 0
+
+    max_time = num_of_tasks * 3
     processing_time = 2
 
     if break_offset == 0:
@@ -35,9 +35,9 @@ if __name__ == '__main__':
         print("offset wrong")
         exit()
 
-    breaks = [(i*num_of_tasks + break_offset, i*num_of_tasks + break_offset + 1) for i in range(num_of_tasks)]
+    breaks = [(i * num_of_tasks + break_offset, i * num_of_tasks + break_offset + 1) for i in range(num_of_tasks)]
     tasks = {x for x in range(num_of_tasks)}
-    starts_no_break = [x*3+break_offset+1 for x in range(-1, num_of_tasks) if x*3+break_offset+1>= 0]
+    starts_no_break = [x * 3 + break_offset + 1 for x in range(-1, num_of_tasks) if x * 3 + break_offset + 1 >= 0]
     starts_break = list(set(range(max_time)).difference(starts_no_break))
     domain_no_break = cp_model.Domain.FromIntervals([[x] for x in starts_no_break])
     domain_break = cp_model.Domain.FromIntervals([[x] for x in starts_break])
@@ -53,10 +53,9 @@ if __name__ == '__main__':
     for task in tasks:
         if task == 0:
             continue
-        model.Add(var_task_ends[task-1] <= var_task_starts[task])
+        model.Add(var_task_ends[task - 1] <= var_task_starts[task])
 
     for task in tasks:
-
         model.AddLinearExpressionInDomain(var_task_starts[task], domain_break).OnlyEnforceIf(
             var_task_overlap_break[task]
         )
@@ -65,7 +64,7 @@ if __name__ == '__main__':
             var_task_overlap_break[task].Not()
         )
 
-        model.Add(var_task_durations[task] == processing_time+1).OnlyEnforceIf(
+        model.Add(var_task_durations[task] == processing_time + 1).OnlyEnforceIf(
             var_task_overlap_break[task]
         )
 
@@ -101,7 +100,7 @@ if __name__ == '__main__':
     status = solver.Solve(model=model)
     total_time = time() - start
 
-    print_result = True
+    print_result = False
     # show the result if getting the optimal one
     if print_result:
         print("-----------------------------------------")
@@ -132,3 +131,27 @@ if __name__ == '__main__':
             print("Model invalid")
         else:
             print(status)
+
+    if status == cp_model.OPTIMAL:
+        return total_time
+    else:
+        return -999
+
+
+if __name__ == '__main__':
+
+    sizes = range(3, 90, 3)
+
+    model_times = []
+
+    for size in tqdm(sizes):
+        model_times.append(run_model(size))
+
+    ax = plt.figure().gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.plot(sizes, model_times, marker='o')
+    plt.legend()
+    plt.title(f'Conditional durations')
+    plt.xlabel('The number of total tasks')
+    plt.ylabel('Seconds')
+    plt.show()

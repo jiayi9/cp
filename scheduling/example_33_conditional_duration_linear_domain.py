@@ -1,10 +1,6 @@
 from ortools.sat.python import cp_model
 from time import time
-from matplotlib import pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from ortools.sat import cp_model_pb2
 import pandas as pd
-import string
 
 
 if __name__ == '__main__':
@@ -19,9 +15,9 @@ if __name__ == '__main__':
     where x represent a unit duration break period
     
     """
-    break_offset = 1
+    break_offset = 0
 
-    num_of_tasks = 5
+    num_of_tasks = 3
     max_time = num_of_tasks*3
     processing_time = 2
 

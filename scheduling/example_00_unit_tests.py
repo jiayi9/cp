@@ -279,5 +279,3 @@ print(status)
 if status == 1 or status == 4:
     print('x', solver.Value(x))
     print('x_is_greater_than_5', solver.Value(x_is_between_5_and_10))
-
-

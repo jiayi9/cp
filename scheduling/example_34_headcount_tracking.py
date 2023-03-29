@@ -304,15 +304,18 @@ if __name__ == '__main__':
             df = df.sort_values(['start'])
             print(df)
             if tracking_method == 0:
+                print('Using method: cumulative_with_built_in_feature')
                 print('resource_needs', solution.resource_needs)
 
             elif tracking_method == 1:
+                print('Using method: cumulative_with_start_time')
                 print('resource_needs', solution.resource_needs)
                 print('task_resource_needs', solution.task_resource_needs)
                 print('duration_task_resource_needs', solution.duration_task_resource_needs)
                 print('var_task_starts_presence', solution.var_task_starts_presence)
 
             elif tracking_method == 2:
+                print('Using method: cumulative_with_overlap')
                 print('resource_needs', solution.resource_needs)
                 print('task_resource_needs', solution.task_resource_needs)
                 print('duration_task_resource_needs', solution.duration_task_resource_needs)

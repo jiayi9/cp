@@ -304,5 +304,5 @@ if __name__ == '__main__':
     lst = [lst1, lst2, lst3, lst4]
 
     # Save test results
-    save_test_results(lst, times, save_path='C:/Temp/hints_analysis.csv')
+    save_test_results(lst, times, save_path='C:/Temp/hint_and_obj_analysis.csv')
     plot_results(lst, times)

@@ -39,42 +39,12 @@ def create_model(number_of_products, num_of_tasks_per_product, campaign_size, nu
 
     var_task_starts = {task: model.NewIntVar(0, max_time, f"task_{task}_start") for task in tasks}
     var_task_ends = {task: model.NewIntVar(0, max_time, f"task_{task}_end") for task in tasks}
-
     var_machine_task_starts = {(m, t): model.NewIntVar(0, max_time, f"m{m}_t{t}_start") for t in tasks for m in machines}
     var_machine_task_ends = {(m, t): model.NewIntVar(0, max_time, f"m{m}_t{t}_end") for t in tasks for m in machines}
     var_machine_task_presences = {(m, t): model.NewBoolVar(f"pre_{m}_{t}") for t in tasks for m in machines}
-
     var_machine_task_rank = {(m, t): model.NewIntVar(0, campaign_size-1, f"t_{t}_cu") for t in tasks for m in machines}
-
-    # No influence on the final result. Not need to lock the starting rank values of the first tasks per product to be 0
-    # for product_idx, product in enumerate(range(number_of_products)):
-    #     print(f"Lock the rank of task {product_idx*num_of_tasks_per_product} to zero on all machines")
-    #     for m in machines:
-    #         model.Add(var_machine_task_rank[m, product_idx*num_of_tasks_per_product] == 0)
-
     var_m_t_reach_campaign_end = {(m, t): model.NewBoolVar(f"t{t}_reach_max_on_m{m}") for t in tasks for m in machines}
     var_m_t_product_change = {(m, t): model.NewBoolVar(f"task_{t}_change_product_on_m{m}") for t in tasks for m in machines}
-
-    # This is optional
-    # model.AddDecisionStrategy(
-    #     var_m_t_product_change.values(),
-    #     cp_model.CHOOSE_FIRST,
-    #     cp_model.SELECT_MIN_VALUE
-    # )
-
-    # Heuristic: Lock the sequence of the tasks (assume the deadlines are in the task order
-    # AND a task with later deadline shall not start earlier than a task with a earlier deadline)
-    # print("\nApply the tasks sequence heuristics")
-    # # Option 1: Locking the sequence of tasks per product! This is slower (7.54s for 3, 4, 4)
-    # for product_idx, product in enumerate(range(number_of_products)):
-    #     for task_id_in_product_group, task in enumerate(range(num_of_tasks_per_product)):
-    #         _index = product_idx * num_of_tasks_per_product + task_id_in_product_group
-    #         if task_id_in_product_group == 0:
-    #             print(f"\nLock {_index}", end=" ")
-    #         else:
-    #             print(f" <= {_index}", end=" ")
-    #             model.Add(var_task_ends[_index-1] <= var_task_starts[_index])
-    # print("\n")
 
     # These intervals is needed otherwise the duration is not constrained
     var_machine_task_intervals = {
@@ -162,52 +132,7 @@ def create_model(number_of_products, num_of_tasks_per_product, campaign_size, nu
 
         model.AddCircuit(arcs)
 
-    return model
-
-
-
-
-# This takes 16 seconds
-model = create_model(5, 20, 3, 1)
-
-# solver = cp_model.CpSolver()
-# start = time()
-# status = solver.Solve(model=model)
-# total_time = time() - start
-# print(status)
-# print(solver.ObjectiveValue())
-# #10
-# print(total_time, status)
-
-phases = [
-    {'phase_id': 0, 'max_time': 0.5},
-    {'phase_id': 1, 'max_time': 1},
-    {'phase_id': 2, 'max_time': 2},
-    {'phase_id': 3, 'max_time': 4},
-    {'phase_id': 4, 'max_time': 8}
-]
-
-phases = [
-    {'phase_id': 0, 'max_time': 10},
-    {'phase_id': 1, 'max_time': 10},
-    {'phase_id': 2, 'max_time': 10},
-    {'phase_id': 3, 'max_time': 10},
-    {'phase_id': 4, 'max_time': 10}
-]
-
-phases = [
-    {'phase_id': 0, 'max_time': 5},
-    {'phase_id': 1, 'max_time': 10},
-    {'phase_id': 2, 'max_time': 15},
-    {'phase_id': 3, 'max_time': 20},
-    {'phase_id': 4, 'max_time': 25}
-]
-
-n = 6
-
-phases = [
-    {'phase_id': i, 'max_time': (i+1)*10} for i in range(n)
-]
+    return model, make_span
 
 
 def get_solutions(model, solver):
@@ -224,132 +149,275 @@ def add_hints(model, solution):
             model.Proto().solution_hint.vars.append(i)
             model.Proto().solution_hint.values.append(solution[var.name])
 
-# get_solutions(model, solver)
 
-obj_list = []
-
-for phase in phases:
-    phase_id, max_time = phase['phase_id'], phase['max_time']
-    print('----------------------------')
-    model.ClearHints()
-    if phase_id == 0:
-        solver = cp_model.CpSolver()
-    if phase_id > 0 and 'solution' in locals():
-        print("Add hints")
-        add_hints(model, solution)
-    print('number of variables in solution hints:', len(model.Proto().solution_hint.vars))
-    #solver.parameters.keep_all_feasible_solutions_in_presolve = True
-    solver.parameters.max_time_in_seconds = max_time
-    start = time()
-    status = solver.Solve(model=model)
-    print('number of solutions:', solver.ResponseProto().solution)
-
-    if status == 1 or status == 3:
-        print(f'error status : {status}')
-        break
-    if status == 0:
-        print(f'Cannot find a feasible solution in the given time {max_time}. status:{status}')
-        obj_list.append(np.nan)
-        continue
-
-    obj_value = solver.ObjectiveValue()
-    obj_list.append(obj_value)
-    solution = get_solutions(model, solver)
-    total_time = time() - start
-    print(f"phase_id: {phase_id}, max_time: {max_time}, status: {status}, obj: {obj_value}. total time: {round(total_time,1)}")
-
-    if status == 4:
-        print('======================================================')
-        print('Optimal Solution Achieved ! No need to continue')
-        break
-
-print(obj_list)
-
-times = [(i+1)*5 for i in range(n)]
+def create_model_for_test():
+    # model = create_model(5, 20, 3, 1)
+    model, obj = create_model(4, 4, 3, 1)
+    return model, obj
 
 
-ax = plt.figure().gca()
-ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-plt.plot(times, obj_list, marker='o')
-plt.legend()
-plt.title(f'time vs obj')
-plt.xlabel('running seconds')
-plt.ylabel('obj')
-plt.show()
+if __name__ == '__main__':
 
-# self.alg_data, self.model = solver.solve(
-#     alg_data=self.alg_data,
-#     previous_model=self.model,
-#     model_parameters=self.model_parameters,
-# )
+    time_n = 2
+    times = [(i + 1) * 10 for i in range(time_n)]
+    phases = [{'phase_id': i, 'max_time': (i+1)*10} for i in range(time_n)]
 
+    # repetitions
+    M = 1
 
-#
-#
-# vars_sol = {}
-# for i, var in enumerate(model.Proto().variables):
-#     value = solver.ResponseProto().solution[i]
-#     vars_sol[var.name] = value
-#
-#
-#
-# solver = cp_model.CpSolver()
-# solver.parameters.max_time_in_seconds = 0.5
-# start = time()
-# status = solver.Solve(model=model)
-# total_time = time() - start
-# print(total_time, status)
-#
-# #model.ExportToFile("C:/Temp/xxxx.pb.txt")
-#
-# start = time()
-# status = solver.Solve(model=model)
-# total_time = time() - start
-# print(total_time, status)
-#
-# start = time()
-# status = solver.Solve(model=model)
-# total_time = time() - start
-# print(total_time, status)
-#
-# start = time()
-# status = solver.Solve(model=model)
-# total_time = time() - start
-# print(total_time, status)
-#
-# vars_sol = {}
-# for i, var in enumerate(model.Proto().variables):
-#     print(var)
-#     print(var.name)
-#     print(var.domain)
-#     print('-------------------')
-#     vars_sol[var.name] = var
-#
-# model.Proto().solution_hint
-# for i, var in enumerate(model.Proto().variables):
-#     if var.name in vars_sol:
-#         model.Proto().solution_hint.vars.append(i)
-#         model.Proto().solution_hint.values.append(vars_sol[var.name])
-# #
-#
-# print(model.ModelStats())
+    # no hints from last run
+    print('-------------------------------------------------------------------------------------------------------')
+    print('--------------------------------  No hints from last run/No obj  --------------------------------------')
+    print('-------------------------------------------------------------------------------------------------------')
+
+    L_1 = []
+
+    for m in range(M):
+        model, _ = create_model_for_test()
+
+        obj_list = []
+        for phase in phases:
+            phase_id, max_time = phase['phase_id'], phase['max_time']
+            print('----------------------------')
+            model.ClearHints()
+            if phase_id == 0:
+                solver = cp_model.CpSolver()
+            # if phase_id > 0 and 'solution' in locals():
+            #     print("Add hints")
+            #     add_hints(model, solution)
+            print('number of variables in solution hints:', len(model.Proto().solution_hint.vars))
+            solver.parameters.max_time_in_seconds = max_time
+            start = time()
+            status = solver.Solve(model=model)
+            print('number of solutions:', solver.ResponseProto().solution)
+
+            if status == 1 or status == 3:
+                print(f'error status : {status}')
+                break
+            if status == 0:
+                print(f'Cannot find a feasible solution in the given time {max_time}. status:{status}')
+                obj_list.append(np.nan)
+                continue
+
+            obj_value = solver.ObjectiveValue()
+            obj_list.append(obj_value)
+            solution = get_solutions(model, solver)
+            total_time = time() - start
+            print(f"phase_id: {phase_id}, max_time: {max_time}, status: {status}, obj: {obj_value}. total time: {round(total_time,1)}")
+
+            if status == 4:
+                print('======================================================')
+                print('Optimal Solution Achieved ! No need to continue')
+                break
+
+        L_1.append(obj_list)
 
 
-# @dataclass
-# class PhaseParameters:
-#     """  Gather different input optimisation parameters that can be set for each phase. """
-#
-#     obj_phase: str = None
-#     max_time_in_seconds: int = None
-#     solution_count_limit: int = None
-#     restart: bool = False
-#
-#
-# phase_1 = PhaseParameters('phase_1', 10)
-# phase_2 = PhaseParameters('phase_2', 10)
-#
-#
+    #
+    print('-------------------------------------------------------------------------------------------------------')
+    print('--------------------------------  Add hints from last run/No obj  -------------------------------------')
+    print('-------------------------------------------------------------------------------------------------------')
+
+    L_2 = []
+
+    for m in range(M):
+        model, _ = create_model_for_test()
+
+        obj_list = []
+        for phase in phases:
+            phase_id, max_time = phase['phase_id'], phase['max_time']
+            print('----------------------------')
+            model.ClearHints()
+            if phase_id == 0:
+                solver = cp_model.CpSolver()
+            if phase_id > 0 and 'solution' in locals():
+                print("Add hints")
+                add_hints(model, solution)
+            print('number of variables in solution hints:', len(model.Proto().solution_hint.vars))
+            solver.parameters.max_time_in_seconds = max_time
+            start = time()
+            status = solver.Solve(model=model)
+            print('number of solutions:', solver.ResponseProto().solution)
+
+            if status == 1 or status == 3:
+                print(f'error status : {status}')
+                break
+            if status == 0:
+                print(f'Cannot find a feasible solution in the given time {max_time}. status:{status}')
+                obj_list.append(np.nan)
+                continue
+
+            obj_value = solver.ObjectiveValue()
+            obj_list.append(obj_value)
+            solution = get_solutions(model, solver)
+            total_time = time() - start
+            print(f"phase_id: {phase_id}, max_time: {max_time}, status: {status}, obj: {obj_value}. total time: {round(total_time,1)}")
+
+            if status == 4:
+                print('======================================================')
+                print('Optimal Solution Achieved ! No need to continue')
+                break
+
+        L_2.append(obj_list)
 
 
-# show the result if getting the optimal one
+    #
+    print('-------------------------------------------------------------------------------------------------------')
+    print('---------------------------   No hints from last run / obj from last run  -----------------------------')
+    print('-------------------------------------------------------------------------------------------------------')
+
+    L_3 = []
+
+    for m in range(M):
+        model, obj_var = create_model_for_test()
+
+        target_variable = [x for x in model.Proto().variables if x.name == 'make_span'][0]
+
+        obj_list = []
+
+        for phase in phases:
+            phase_id, max_time = phase['phase_id'], phase['max_time']
+            print('----------------------------')
+            model.ClearHints()
+            if phase_id == 0:
+                solver = cp_model.CpSolver()
+            if phase_id > 0 and 'solution' in locals():
+                # print("Add hints")
+                # add_hints(model, solution)
+                model.Add(obj_var <= int(obj_value))
+
+            print('number of variables in solution hints:', len(model.Proto().solution_hint.vars))
+            solver.parameters.max_time_in_seconds = max_time
+            start = time()
+            status = solver.Solve(model=model)
+            print('number of solutions:', solver.ResponseProto().solution)
+
+            if status == 1 or status == 3:
+                print(f'error status : {status}')
+                break
+            if status == 0:
+                print(f'Cannot find a feasible solution in the given time {max_time}. status:{status}')
+                obj_list.append(np.nan)
+                continue
+
+            obj_value = solver.ObjectiveValue()
+            obj_list.append(obj_value)
+            solution = get_solutions(model, solver)
+            total_time = time() - start
+            print(f"phase_id: {phase_id}, max_time: {max_time}, status: {status}, obj: {obj_value}. total time: {round(total_time,1)}")
+
+            if status == 4:
+                print('======================================================')
+                print('Optimal Solution Achieved ! No need to continue')
+                break
+
+        L_3.append(obj_list)
+
+    #
+    print('-------------------------------------------------------------------------------------------------------')
+    print('---------------------------      hints from last run / obj from last run  -----------------------------')
+    print('-------------------------------------------------------------------------------------------------------')
+    L_4 = []
+
+    for m in range(M):
+        model, obj_var = create_model_for_test()
+
+        target_variable = [x for x in model.Proto().variables if x.name == 'make_span'][0]
+
+        obj_list = []
+
+        for phase in phases:
+            phase_id, max_time = phase['phase_id'], phase['max_time']
+            print('----------------------------')
+            model.ClearHints()
+            if phase_id == 0:
+                solver = cp_model.CpSolver()
+            if phase_id > 0 and 'solution' in locals():
+                print("Add hints")
+                add_hints(model, solution)
+                print("Using the obj achieved from last run as LB")
+                model.Add(obj_var <= int(obj_value))
+
+            print('number of variables in solution hints:', len(model.Proto().solution_hint.vars))
+            solver.parameters.max_time_in_seconds = max_time
+            start = time()
+            status = solver.Solve(model=model)
+            print('number of solutions:', solver.ResponseProto().solution)
+
+            if status == 1 or status == 3:
+                print(f'error status : {status}')
+                break
+            if status == 0:
+                print(f'Cannot find a feasible solution in the given time {max_time}. status:{status}')
+                obj_list.append(np.nan)
+                continue
+
+            obj_value = solver.ObjectiveValue()
+            obj_list.append(obj_value)
+            solution = get_solutions(model, solver)
+            total_time = time() - start
+            print(f"phase_id: {phase_id}, max_time: {max_time}, status: {status}, obj: {obj_value}. total time: {round(total_time,1)}")
+
+            if status == 4:
+                print('======================================================')
+                print('Optimal Solution Achieved ! No need to continue')
+                break
+
+        L_4.append(obj_list)
+
+
+    df_no_hint_no_obj = pd.DataFrame(L_1)
+    df_no_hint_no_obj.columns = times
+    df_no_hint_no_obj = df_no_hint_no_obj.assign(group='no hints & no obj')
+
+    df_hint_no_obj = pd.DataFrame(L_2)
+    df_hint_no_obj.columns = times
+    df_hint_no_obj = df_hint_no_obj.assign(group='hints & no obj')
+
+    df_no_hint_obj = pd.DataFrame(L_3)
+    df_no_hint_obj.columns = times
+    df_no_hint_obj = df_no_hint_obj.assign(group='no hints & obj')
+
+    df_hint_obj = pd.DataFrame(L_4)
+    df_hint_obj.columns = times
+    df_hint_obj = df_hint_obj.assign(group='hints & obj')
+
+    df = pd.concat([df_no_hint_no_obj, df_hint_no_obj, df_no_hint_obj, df_hint_obj], axis=0)
+    df.to_csv('C:/Temp/hints_analysis.csv', index=False)
+
+
+    # plot the results
+
+    ax = plt.figure().gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    for idx, v in enumerate(L_1):
+        if idx == 0:
+            plt.plot(times, v, '-.',marker='o', color='blue', label='No hint & No Obj.')
+        else:
+            plt.plot(times, v, '-.',marker='o', color='blue')
+
+    for idx, v in enumerate(L_2):
+        if idx == 0:
+            plt.plot(times, v, '-.', marker='o', color='orange', label='Hint & No Obj')
+        else:
+            plt.plot(times, v, '-.',  marker='o', color='orange')
+
+    for idx, v in enumerate(L_3):
+        if idx == 0:
+            plt.plot(times, v, '-.', marker='o', color='red', label='No hint & Obj')
+        else:
+            plt.plot(times, v, '-.',  marker='o', color='red')
+
+    for idx, v in enumerate(L_4):
+        if idx == 0:
+            plt.plot(times, v, '-.', marker='o', color='green', label='Hint & Obj')
+        else:
+            plt.plot(times, v, '-.',  marker='o', color='green')
+
+    plt.legend()
+    plt.title(f'time vs obj')
+    plt.xlabel('running seconds')
+    plt.ylabel('obj')
+    plt.show()
 

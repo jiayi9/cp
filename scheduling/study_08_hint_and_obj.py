@@ -179,7 +179,7 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
         3. Each run (except for the 1st) can optionally use the previous feasible solution as hints
         4. Each run (except for the 1st) can optionally use the achieved objective value from the previous run
     """
-    print(f"Test with M: {M}, hints: {use_prev_hints}, obj: {use_prev_obj}")
+    print(f"----------------------\nTest with M: {M}, hints: {use_prev_hints}, obj: {use_prev_obj}")
     test_results = []
     for m in range(M):
         model, obj_var = create_model_for_test()
@@ -209,8 +209,8 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
             obj_value = solver.ObjectiveValue()
             obj_list.append(obj_value)
             solution = get_solutions(model, solver)
-            print(f"  phase_id: {phase_id}, max_time: {max_time}, status: {status}, obj: {obj_value}. "
-                  f"total time: {round(actual_solve_time,1)}")
+            print(f"  phase_id: {phase_id}, max time: {max_time}, status: {status}, obj: {obj_value}. "
+                  f"actual time: {round(actual_solve_time,1)}")
             if status == 4:
                 print('Optimal Solution Achieved ! No need to continue')
                 break
@@ -283,20 +283,28 @@ def plot_results(lst, times):
 if __name__ == '__main__':
     """
     Run the test with 4 settings:
-        1. Not using hints. Not using previous objective.
-        2. Use the previous solution as hints. Not using previous objective 
-        3. Not using hints. Use the achieved objective from previous run as a constraint.
-        4. Use the previous solution as hints. Use the achieved objective from previous run as a constraint.
+        1. NOT using previous solution as hints.    NOT using previous objective as UB.
+        2. Use the previous solution as hints.      NOT using previous objective as UB.
+        3. NOT using previous solution as hints.    Using the achieved objective from previous run as UB.
+        4. Use the previous solution as hints.      Using the achieved objective from previous run as UB.
     """
 
     # M is the number of repeated run for a given test with a given max running time
     M = 1
+
     # time_n is a multiplier that determines how long we want to run the model for
     time_n = 2
+
+    # important! It is also interesting to text phases with the same running time to observe
+    # that the solver is stateless ! and what hints or objective UB can bring between two phases (stop and resume)
+    # We do this by setting the increment_seconds (slope) to be 0
+
+    base_seconds = 10
     increment_seconds = 10
-    times = [(i + 1) * increment_seconds for i in range(time_n)]
+    times = [base_seconds + i*increment_seconds for i in range(time_n)]
     phases = [{'phase_id': i, 'max_time': times[i]} for i in range(time_n)]
 
+    # execute the tests (just all possible combinations of use_prev_hints and use_prev_obj)
     lst1 = run_test(M=M, phases=phases, use_prev_hints=False, use_prev_obj=False)
     lst2 = run_test(M=M, phases=phases, use_prev_hints=True, use_prev_obj=False)
     lst3 = run_test(M=M, phases=phases, use_prev_hints=False, use_prev_obj=True)

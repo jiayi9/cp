@@ -202,6 +202,7 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
             start = time()
             status = solver.Solve(model=model)
             actual_solve_time = time() - start
+            print('Solver parameters:', solver.parameters.max_time_in_seconds, solver.parameters.num_search_workers)
             if status == 1 or status == 3:
                 print(f'error status : {status}  Actual time: {actual_solve_time}')
                 break

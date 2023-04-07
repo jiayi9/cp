@@ -166,9 +166,9 @@ def add_hints(model, solution):
 
 def create_model_for_test():
     """ create the model for the test """
-    # model = create_model(5, 20, 3, 1)
+    model, obj = create_model(8, 20, 3, 1)
     # model, obj = create_model(4, 4, 3, 1)
-    model, obj = create_model(20, 20, 3, 1)
+    # model, obj = create_model(20, 20, 3, 1)
     return model, obj
 
 
@@ -180,10 +180,13 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
         3. Each run (except for the 1st) can optionally use the previous feasible solution as hints
         4. Each run (except for the 1st) can optionally use the achieved objective value from the previous run
     """
-    print(f"----------------------\nTest with M: {M}, hints: {use_prev_hints}, obj: {use_prev_obj}")
+    print(f"----------------------\nTest with Rounds: {M}, hints: {use_prev_hints}, obj: {use_prev_obj}")
     test_results = []
     for m in range(M):
+        print(f'  Round {m}')
+        start = time()
         model, obj_var = create_model_for_test()
+        print('  Model creation time:', round(time() - start, 1))
         solver = cp_model.CpSolver()
         solver.parameters.num_search_workers = 1
         obj_list = []
@@ -201,23 +204,25 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
             solver.parameters.max_time_in_seconds = max_time
             start = time()
             status = solver.Solve(model=model)
-            actual_solve_time = time() - start
-            print('Solver parameters:', solver.parameters.max_time_in_seconds, solver.parameters.num_search_workers)
+            actual_solve_time = round(time() - start, 1)
+            # print(f'      max_time_in_seconds:, {solver.parameters.max_time_in_seconds}, '
+            #       f'num_search_workers {solver.parameters.num_search_workers}')
             if status == 1 or status == 3:
-                print(f'error status : {status}  Actual time: {actual_solve_time}')
+                print(f'      error status : {status}  actual time: {actual_solve_time}')
                 break
             if status == 0:
-                print(f'Cannot find a feasible solution in the given time {max_time}. status:{status} '
-                      f'Actual time: {actual_solve_time}')
+                print(f'      phase_id: {phase_id}, max time: {max_time}, '
+                      f'cannot find a feasible solution. status: {status}, '
+                      f'actual time: {actual_solve_time}')
                 obj_list.append(np.nan)
                 continue
             obj_value = solver.ObjectiveValue()
             obj_list.append(obj_value)
             solution = get_solutions(model, solver)
-            print(f"  phase_id: {phase_id}, max time: {max_time}, status: {status}, obj: {obj_value}. "
+            print(f"      phase_id: {phase_id}, max time: {max_time}, status: {status}, obj: {obj_value}. "
                   f"actual time: {round(actual_solve_time,1)}")
             if status == 4:
-                print('Optimal Solution Achieved ! No need to continue')
+                print(f'      phase_id: {phase_id}, max time: {max_time} Optimal Achieved ! No need to continue')
                 break
         test_results.append(obj_list)
     return test_results
@@ -295,19 +300,22 @@ if __name__ == '__main__':
     """
 
     # M is the number of repeated run for a given test with a given max running time
-    M = 3
+    M = 10
 
     # time_n is a multiplier that determines how long we want to run the model for
-    time_n = 4
+    time_n = 10
 
     # important! It is also interesting to text phases with the same running time to observe
     # that the solver is stateless ! and what hints or objective UB can bring between two phases (stop and resume)
     # We do this by setting the increment_seconds (slope) to be 0
 
-    base_seconds = 120
-    increment_seconds = 120
+    base_seconds = 36
+    #increment_seconds = 20
+    increment_seconds = 0
+
     times = [base_seconds + i*increment_seconds for i in range(time_n)]
     phases = [{'phase_id': i, 'max_time': times[i]} for i in range(time_n)]
+    #phases.reverse()
 
     # execute the tests (just all possible combinations of use_prev_hints and use_prev_obj)
     lst1 = run_test(M=M, phases=phases, use_prev_hints=False, use_prev_obj=False)
@@ -317,5 +325,11 @@ if __name__ == '__main__':
     lst = [lst1, lst2, lst3, lst4]
 
     # Save test results
+
+    #times.reverse()
+
     save_test_results(lst, times, save_path='C:/Temp/hint_and_obj_analysis.csv')
+
     plot_results(lst, times)
+
+    print(lst)

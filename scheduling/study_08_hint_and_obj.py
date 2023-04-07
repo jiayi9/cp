@@ -167,7 +167,8 @@ def add_hints(model, solution):
 def create_model_for_test():
     """ create the model for the test """
     # model = create_model(5, 20, 3, 1)
-    model, obj = create_model(4, 4, 3, 1)
+    # model, obj = create_model(4, 4, 3, 1)
+    model, obj = create_model(20, 20, 3, 1)
     return model, obj
 
 
@@ -183,13 +184,15 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
     test_results = []
     for m in range(M):
         model, obj_var = create_model_for_test()
+        solver = cp_model.CpSolver()
+        solver.parameters.num_search_workers = 1
         obj_list = []
         for phase in phases:
             phase_id, max_time = phase['phase_id'], phase['max_time']
             model.ClearHints()
             # initialize the solver
-            if phase_id == 0:
-                solver = cp_model.CpSolver()
+            # if phase_id == 0:
+            #     solver = cp_model.CpSolver()
             if phase_id > 0 and 'solution' in locals():
                 if use_prev_hints:
                     add_hints(model, solution)
@@ -200,10 +203,11 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
             status = solver.Solve(model=model)
             actual_solve_time = time() - start
             if status == 1 or status == 3:
-                print(f'error status : {status}')
+                print(f'error status : {status}  Actual time: {actual_solve_time}')
                 break
             if status == 0:
-                print(f'Cannot find a feasible solution in the given time {max_time}. status:{status}')
+                print(f'Cannot find a feasible solution in the given time {max_time}. status:{status} '
+                      f'Actual time: {actual_solve_time}')
                 obj_list.append(np.nan)
                 continue
             obj_value = solver.ObjectiveValue()
@@ -290,17 +294,17 @@ if __name__ == '__main__':
     """
 
     # M is the number of repeated run for a given test with a given max running time
-    M = 1
+    M = 3
 
     # time_n is a multiplier that determines how long we want to run the model for
-    time_n = 2
+    time_n = 4
 
     # important! It is also interesting to text phases with the same running time to observe
     # that the solver is stateless ! and what hints or objective UB can bring between two phases (stop and resume)
     # We do this by setting the increment_seconds (slope) to be 0
 
-    base_seconds = 10
-    increment_seconds = 10
+    base_seconds = 120
+    increment_seconds = 120
     times = [base_seconds + i*increment_seconds for i in range(time_n)]
     phases = [{'phase_id': i, 'max_time': times[i]} for i in range(time_n)]
 

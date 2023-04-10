@@ -303,19 +303,19 @@ if __name__ == '__main__':
     M = 10
 
     # time_n is a multiplier that determines how long we want to run the model for
-    time_n = 10
+    time_n = 20
 
     # important! It is also interesting to text phases with the same running time to observe
     # that the solver is stateless ! and what hints or objective UB can bring between two phases (stop and resume)
     # We do this by setting the increment_seconds (slope) to be 0
 
-    base_seconds = 36
-    #increment_seconds = 20
-    increment_seconds = 0
+    base_seconds = 20
+    increment_seconds = 20
+    # increment_seconds = 0
 
     times = [base_seconds + i*increment_seconds for i in range(time_n)]
     phases = [{'phase_id': i, 'max_time': times[i]} for i in range(time_n)]
-    #phases.reverse()
+    # phases.reverse()
 
     # execute the tests (just all possible combinations of use_prev_hints and use_prev_obj)
     lst1 = run_test(M=M, phases=phases, use_prev_hints=False, use_prev_obj=False)
@@ -326,7 +326,7 @@ if __name__ == '__main__':
 
     # Save test results
 
-    #times.reverse()
+    # times.reverse()
 
     save_test_results(lst, times, save_path='C:/Temp/hint_and_obj_analysis.csv')
 

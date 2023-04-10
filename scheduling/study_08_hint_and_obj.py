@@ -164,14 +164,6 @@ def add_hints(model, solution):
             model.Proto().solution_hint.values.append(solution[var.name])
 
 
-def create_model_for_test():
-    """ create the model for the test """
-    model, obj = create_model(8, 20, 3, 1)
-    # model, obj = create_model(4, 4, 3, 1)
-    # model, obj = create_model(20, 20, 3, 1)
-    return model, obj
-
-
 def run_test(M, phases, use_prev_hints, use_prev_obj):
     """
     The test runs with
@@ -181,11 +173,17 @@ def run_test(M, phases, use_prev_hints, use_prev_obj):
         4. Each run (except for the 1st) can optionally use the achieved objective value from the previous run
     """
     print(f"----------------------\nTest with Rounds: {M}, hints: {use_prev_hints}, obj: {use_prev_obj}")
+
+    # 4, 4, 3, 1
+    # 20, 20, 3, 1
+    # 8, 20, 3, 1
+    number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines = 4, 4, 3, 1
+
     test_results = []
     for m in range(M):
         print(f'  Round {m}')
         start = time()
-        model, obj_var = create_model_for_test()
+        model, obj_var = create_model(number_of_products, num_of_tasks_per_product, campaign_size, number_of_machines)
         print('  Model creation time:', round(time() - start, 1))
         solver = cp_model.CpSolver()
         solver.parameters.num_search_workers = 1
@@ -303,7 +301,7 @@ if __name__ == '__main__':
     M = 10
 
     # time_n is a multiplier that determines how long we want to run the model for
-    time_n = 20
+    time_n = 5
 
     # important! It is also interesting to text phases with the same running time to observe
     # that the solver is stateless ! and what hints or objective UB can bring between two phases (stop and resume)
